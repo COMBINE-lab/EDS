@@ -8,4 +8,4 @@ Recent advancement in single-cell technologies has seen rapid rise in the amount
 We have a simple rust code inside the `src-rs`, it can be installed using `cargo build --release` and can be used as `./release/EDS convert <mtx_file>` and `./release/EDS convert <eds_file>`
 
 ## Future 
-[ ] Support delayedArray R object
+- [ ] Support delayedArray R object
