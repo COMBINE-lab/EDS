@@ -1,7 +1,6 @@
 use std::fs::File;
 use std::io;
-use std::io::{BufRead, BufReader, Read, Write};
-use std::path::Path;
+use std::io::{Read, Write};
 
 use byteorder::{ByteOrder, LittleEndian};
 use flate2::read::GzDecoder;
@@ -17,7 +16,6 @@ pub fn read_eds(
     info!("Using {} as input EDS file\n", input);
     info!("Found {} cbs and {} features", num_cells, num_genes);
 
-    let path = Path::new(input);
     let num_bit_vecs: usize = round::ceil(num_genes as f64 / 8.0, 0) as usize;
     let mut total_molecules = 0.0;
 
