@@ -12,7 +12,7 @@ There are other formats (such as [loom](https://github.com/linnarsson-lab/loompy
 We have a simple rust code inside the `src-rs`, it can be installed using `cargo build --release` and can be used as `./target/release/eds convert -e <eds_file>`.
 
 ## Benchamrks
-Currently benchmarked on very small datasets of just 300 cells and 60603 gene features the comparisons trades off as follows.
+Currently benchmarked on very small datasets of just 300 cells and 60603 gene features the comparisons trades off as follows.  
 ![300 Cells](https://github.com/COMBINE-lab/EDS/blob/master/benchmarks/inital.png)
 
 ## Future 
