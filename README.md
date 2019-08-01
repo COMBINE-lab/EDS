@@ -13,7 +13,7 @@ We have a simple rust code inside the `src-rs`, it can be installed using `cargo
 
 ## Benchamrks
 Currently benchmarked on very small datasets of just 300 cells and 60603 gene features the comparisons trades off as follows.
-![300 Cells][../benchmarks/inital.png]
+![300 Cells](https://github.com/COMBINE-lab/EDS/blob/master/benchmarks/inital.png)
 
 ## Future 
 - [ ] Benchmarks
