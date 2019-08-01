@@ -8,17 +8,25 @@ pub fn write_mtx(
     input: &str,
     expressions: Vec<Vec<f32>>,
     bit_vecs: Vec<Vec<u8>>,
+    num_cells: usize,
+    num_features: usize,
 ) -> Result<bool, io::Error> {
     let mut path_str = input.to_string();
     let offset = path_str
-        .find("mtx.gz")
+        .find("eds.gz")
         .unwrap_or(path_str.len());
 
-    path_str.replace_range(offset.., "eds.gz");
+    path_str.replace_range(offset.., "mtx.gz");
+
+    let mut tot_expressed_features = 0;
+    expressions.iter()
+        .for_each(|x| tot_expressed_features += x.len());
 
     let file_handle = File::create(path_str)?;
     let mut file = GzEncoder::new(file_handle, Compression::default());
-    let header = "%%MatrixMarket\tmatrix\tcoordinate\treal\tgeneral";
+
+    let mut header = "%%MatrixMarket\tmatrix\tcoordinate\treal\tgeneral\n".to_string();
+    header.push_str(&format!("{}\t{}\t{}\n", num_cells, num_features, tot_expressed_features));
     file.write_all(header.as_bytes())?;
 
     assert!(bit_vecs.len() == expressions.len(), "length of bit vec and expression is not same");

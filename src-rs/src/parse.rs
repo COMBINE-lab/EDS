@@ -58,7 +58,7 @@ pub fn read_eds(
 
     info!("Found Total {:.2} molecules", total_molecules);
     info!(
-        "w/ {:.2} -> Molecules/cell",
+        "w/ {:.2} Molecules/cell",
         total_molecules / num_cells as f32
     );
     Ok(true)

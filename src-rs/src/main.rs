@@ -29,14 +29,20 @@ fn convert_file(sub_m: &ArgMatches) -> Result<(), io::Error> {
             let mut alphas: Vec<Vec<f32>> = Vec::new();
             let mut bit_vecs: Vec<Vec<u8>> = Vec::new();
 
+            let num_cells: usize = sub_m.value_of("cells")
+                .expect("can't find #cells").parse().unwrap();
+
+            let num_features = sub_m.value_of("features")
+                .expect("can't find #features").parse().unwrap();
+
             info!("Starting to read EDS file");
             parse::read_eds(file_path.clone(),
-                            sub_m.value_of("cells").expect("can't find #cells").parse().unwrap(),
-                            sub_m.value_of("features").expect("can't find #features").parse().unwrap(),
+                            num_cells, num_features,
                             &mut alphas, &mut bit_vecs)?;
 
             info!("Done Reading Quants; generating mtx");
-            write::write_mtx(file_path, alphas, bit_vecs)?;
+            write::write_mtx(file_path, alphas, bit_vecs,
+                             num_cells, num_features)?;
         },
         "mtx" => {
             panic!("mtx -> EDS is a work in progress");
