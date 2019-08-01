@@ -1,0 +1,120 @@
+use std::fs::File;
+use std::io;
+use std::io::{BufRead, BufReader, Read, Write};
+use std::path::Path;
+
+use byteorder::{ByteOrder, LittleEndian};
+use flate2::read::GzDecoder;
+use math::round;
+
+pub fn read_eds(
+    input: &str,
+    expr: &mut Vec<Vec<f32>>,
+    bit_vecs: &mut Vec<Vec<u8>>,
+) -> Result<bool, io::Error> {
+    info!("Using Input Directory {}\n", input);
+
+    let path = Path::new(input);
+    let mut cb_names = Vec::new();
+    let mut gene_names = Vec::new();
+
+    {
+        let file_path = path.join("alevin").join("quants_mat_rows.txt");
+        let file_handle = File::open(file_path)?;
+        let file = BufReader::new(&file_handle);
+
+        for line in file.lines() {
+            let l = line.expect("can't read names from cb file");
+            cb_names.push(l);
+        }
+    }
+
+    {
+        let file_path = path.join("alevin").join("quants_mat_cols.txt");
+        let file_handle = File::open(file_path)?;
+        let file = BufReader::new(&file_handle);
+
+        for line in file.lines() {
+            let l = line.expect("can't read names from gene file");
+            gene_names.push(l);
+        }
+    }
+
+    let num_cells = cb_names.len();
+    let num_genes = gene_names.len();
+    info!("Found {} cbs and {} genes", num_cells, num_genes);
+
+    let num_bit_vecs: usize = round::ceil(num_genes as f64 / 8.0, 0) as usize;
+    let mut total_molecules = 0.0;
+
+    {
+        let mut count = 0;
+        let file_path = path.join("alevin").join("quants_mat.gz");
+        let file_handle = File::open(file_path)?;
+        let mut file = GzDecoder::new(file_handle);
+
+        for _ in 0..num_cells {
+            let mut bit_vec = vec![0; num_bit_vecs];
+            file.read_exact(&mut bit_vec[..])?;
+            let mut num_ones = 0;
+            for bits in bit_vec.iter() {
+                num_ones += bits.count_ones();
+            }
+            bit_vecs.push(bit_vec);
+
+            let mut expression: Vec<u8> = vec![0; 4 * (num_ones as usize)];
+            let mut float_buffer: Vec<f32> = vec![0.0_f32; num_ones as usize];
+            file.read_exact(&mut expression[..])?;
+            LittleEndian::read_f32_into(&expression, &mut float_buffer);
+
+            let cell_count: f32 = float_buffer.iter().sum();
+            total_molecules += cell_count;
+            expr.push(float_buffer);
+
+            count += 1;
+            if count % 100 == 0 {
+                print!("\r Done Reading {} cells", count);
+                io::stdout().flush()?;
+            }
+        }
+    }
+
+    println!("\n");
+    assert!(
+        expr.len() == num_cells,
+        "rows and quants file size mismatch"
+    );
+
+    info!("Found Total {:.2} molecules", total_molecules);
+    info!(
+        "w/ {:.2} -> Molecules/cell",
+        total_molecules / num_cells as f32
+    );
+    Ok(true)
+}
+
+//#[cfg(test)]
+//mod tests {
+//    use super::read_alevin_quants;
+//
+//    #[test]
+//    fn neurons_900() {
+//        let input_directory = "/mnt/scratch5/avi/alevin/bin/salmon/tests/alevin_test_data/";
+//        let mut expr: Vec<Vec<f32>> = Vec::new();
+//        let mut bit_vecs: Vec<Vec<u8>> = Vec::new();
+//
+//        match read_alevin_quants(input_directory, &mut expr, &mut bit_vecs) {
+//            Ok(true) => (),
+//            Ok(false) => panic!(),
+//            Err(_) => panic!(),
+//        };
+//
+//        let mut total_molecules = 0.0;
+//        for cell in &expr {
+//            let cell_count: f32 = cell.iter().sum();
+//            total_molecules += cell_count;
+//        }
+//
+//        assert!(total_molecules >= 3425370.0 && total_molecules <= 3425372.0);
+//    }
+//}
