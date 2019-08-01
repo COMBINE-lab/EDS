@@ -6,10 +6,10 @@ Recent advancements in single-cell technologies have seen rapid increase in the 
 
 
 ## What are the caveats ?
-There are other formats (such as [loom](https://github.com/linnarsson-lab/loompy)) which are designed for optimizing the query of the matrix. EDA is primarily designed to improve the storage efficiency rather than query and currently don't support random access to a cell (row).
+There are other formats (such as [loom](https://github.com/linnarsson-lab/loompy)) which are designed for optimizing the query of the matrix. EDS is primarily designed to improve the storage efficiency rather than query and currently don't support random access to a cell (row).
 
 ## How to convert eds to mtx format ?
-We have a simple rust code inside the `src-rs`, it can be installed using `cargo build --release` and can be used as `./target/release/eds convert -e <eds_file>`.
+We have a simple rust code inside the `src-rs`, it can be installed using `cargo build --release` and can be used as `./target/release/eds convert -e <eds_file> -c <num_cells> -f <num_features>`.
 
 ## Benchmark
 Currently benchmarked on very small datasets of just 300 cells and 60603 gene features the comparisons trades off as follows.  
@@ -18,7 +18,7 @@ Currently benchmarked on very small datasets of just 300 cells and 60603 gene fe
 ## Future 
 - [ ] Benchmarks
 - [ ] Support delayedArray R object
-- [ ] Random access through `EDA index`
+- [ ] Random access through `EDS index`
 
 ## Contributors
 - Avi Srivastava

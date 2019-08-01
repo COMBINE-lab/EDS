@@ -12,24 +12,29 @@ pub fn write_mtx(
     num_features: usize,
 ) -> Result<bool, io::Error> {
     let mut path_str = input.to_string();
-    let offset = path_str
-        .find("eds.gz")
-        .unwrap_or(path_str.len());
+    let offset = path_str.find("eds.gz").unwrap_or(path_str.len());
 
     path_str.replace_range(offset.., "mtx.gz");
 
     let mut tot_expressed_features = 0;
-    expressions.iter()
+    expressions
+        .iter()
         .for_each(|x| tot_expressed_features += x.len());
 
     let file_handle = File::create(path_str)?;
     let mut file = GzEncoder::new(file_handle, Compression::default());
 
     let mut header = "%%MatrixMarket\tmatrix\tcoordinate\treal\tgeneral\n".to_string();
-    header.push_str(&format!("{}\t{}\t{}\n", num_cells, num_features, tot_expressed_features));
+    header.push_str(&format!(
+        "{}\t{}\t{}\n",
+        num_cells, num_features, tot_expressed_features
+    ));
     file.write_all(header.as_bytes())?;
 
-    assert!(bit_vecs.len() == expressions.len(), "length of bit vec and expression is not same");
+    assert!(
+        bit_vecs.len() == expressions.len(),
+        "length of bit vec and expression is not same"
+    );
     for (cell_id, exp) in expressions.into_iter().enumerate() {
         let bit_vec = &bit_vecs[cell_id];
         let mut fids: Vec<usize> = Vec::new();
@@ -38,7 +43,7 @@ pub fn write_mtx(
             if *flag != 0 {
                 for (offset, j) in format!("{:b}", flag).chars().enumerate() {
                     match j {
-                        '1' => fids.push( (8 * feature_id) + offset ),
+                        '1' => fids.push((8 * feature_id) + offset),
                         '0' => (),
                         _ => unreachable!(),
                     };
@@ -46,10 +51,18 @@ pub fn write_mtx(
             }
         }
 
-        assert!(fids.len() == exp.len(), "#positions doesn't match with #expressed features");
+        assert!(
+            fids.len() == exp.len(),
+            "#positions doesn't match with #expressed features"
+        );
         let mut mtx_data = "".to_string();
         for (index, count) in exp.into_iter().enumerate() {
-            mtx_data.push_str(&format!("{}\t{}\t{}\n", cell_id+1, fids[index] + 1, count));
+            mtx_data.push_str(&format!(
+                "{}\t{}\t{}\n",
+                cell_id + 1,
+                fids[index] + 1,
+                count
+            ));
         }
 
         file.write_all(mtx_data.as_bytes())?;

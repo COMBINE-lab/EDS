@@ -1,8 +1,8 @@
 extern crate byteorder;
 extern crate clap;
 extern crate flate2;
-extern crate pretty_env_logger;
 extern crate math;
+extern crate pretty_env_logger;
 
 #[macro_use]
 extern crate log;
@@ -16,11 +16,9 @@ use std::io;
 fn convert_file(sub_m: &ArgMatches) -> Result<(), io::Error> {
     let (file_type, file_path) = match sub_m.value_of("mtx") {
         Some(path) => ("mtx", path),
-        None => {
-            match sub_m.value_of("eds") {
-                Some(path) => ("eds", path),
-                None => unreachable!(),
-            }
+        None => match sub_m.value_of("eds") {
+            Some(path) => ("eds", path),
+            None => unreachable!(),
         },
     };
 
@@ -29,24 +27,33 @@ fn convert_file(sub_m: &ArgMatches) -> Result<(), io::Error> {
             let mut alphas: Vec<Vec<f32>> = Vec::new();
             let mut bit_vecs: Vec<Vec<u8>> = Vec::new();
 
-            let num_cells: usize = sub_m.value_of("cells")
-                .expect("can't find #cells").parse().unwrap();
+            let num_cells: usize = sub_m
+                .value_of("cells")
+                .expect("can't find #cells")
+                .parse()
+                .unwrap();
 
-            let num_features = sub_m.value_of("features")
-                .expect("can't find #features").parse().unwrap();
+            let num_features = sub_m
+                .value_of("features")
+                .expect("can't find #features")
+                .parse()
+                .unwrap();
 
             info!("Starting to read EDS file");
-            parse::read_eds(file_path.clone(),
-                            num_cells, num_features,
-                            &mut alphas, &mut bit_vecs)?;
+            parse::read_eds(
+                file_path.clone(),
+                num_cells,
+                num_features,
+                &mut alphas,
+                &mut bit_vecs,
+            )?;
 
             info!("Done Reading Quants; generating mtx");
-            write::write_mtx(file_path, alphas, bit_vecs,
-                             num_cells, num_features)?;
-        },
+            write::write_mtx(file_path, alphas, bit_vecs, num_cells, num_features)?;
+        }
         "mtx" => {
             panic!("mtx -> EDS is a work in progress");
-        },
+        }
         _ => unreachable!(),
     };
 
