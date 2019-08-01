@@ -8,6 +8,7 @@ extern crate math;
 extern crate log;
 
 mod parse;
+mod write;
 
 use clap::{App, Arg, ArgMatches, SubCommand};
 use std::io;
@@ -29,13 +30,16 @@ fn convert_file(sub_m: &ArgMatches) -> Result<(), io::Error> {
             let mut bit_vecs: Vec<Vec<u8>> = Vec::new();
 
             info!("Starting to read EDS file");
-            parse::read_eds(file_path, &mut alphas, &mut bit_vecs)?;
+            parse::read_eds(file_path.clone(),
+                            sub_m.value_of("cells").expect("can't find #cells").parse().unwrap(),
+                            sub_m.value_of("features").expect("can't find #features").parse().unwrap(),
+                            &mut alphas, &mut bit_vecs)?;
 
             info!("Done Reading Quants; generating mtx");
-            //write::write_mtx(iput, mst, alphas)?;
+            write::write_mtx(file_path, alphas, bit_vecs)?;
         },
         "mtx" => {
-            
+            panic!("mtx -> EDS is a work in progress");
         },
         _ => unreachable!(),
     };
@@ -61,11 +65,27 @@ fn main() -> io::Result<()> {
                         .help("path to (zipped) mtx file"),
                 )
                 .arg(
+                    Arg::with_name("cells")
+                        .long("cells")
+                        .short("c")
+                        .takes_value(true)
+                        .help("Number of cells"),
+                )
+                .arg(
+                    Arg::with_name("features")
+                        .long("features")
+                        .short("f")
+                        .takes_value(true)
+                        .help("Number of features"),
+                )
+                .arg(
                     Arg::with_name("eds")
                         .long("eds")
                         .short("e")
                         .takes_value(true)
                         .conflicts_with("mtx")
+                        .requires("cells")
+                        .requires("features")
                         .help("path to (zipped) eds file"),
                 ),
         )

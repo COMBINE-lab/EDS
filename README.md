@@ -8,7 +8,7 @@ Recent advancements in single-cell technologies have seen rapid increase in the 
 ## What are the caveats ?
 There are other formats (such as [loom](https://github.com/linnarsson-lab/loompy)) which are designed for optimizing the query of the matrix. EDA is primarily designed to improve the storage efficiency rather than query and currently don't support random access to a cell (row).
 
-## How to convert to and from mtx format ?
+## How to convert eds to mtx format ?
 We have a simple rust code inside the `src-rs`, it can be installed using `cargo build --release` and can be used as `./target/release/eds convert -e <eds_file>`.
 
 ## Future 

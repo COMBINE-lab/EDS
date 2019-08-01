@@ -9,48 +9,21 @@ use math::round;
 
 pub fn read_eds(
     input: &str,
+    num_cells: usize,
+    num_genes: usize,
     expr: &mut Vec<Vec<f32>>,
     bit_vecs: &mut Vec<Vec<u8>>,
 ) -> Result<bool, io::Error> {
-    info!("Using Input Directory {}\n", input);
+    info!("Using {} as input EDS file\n", input);
+    info!("Found {} cbs and {} features", num_cells, num_genes);
 
     let path = Path::new(input);
-    let mut cb_names = Vec::new();
-    let mut gene_names = Vec::new();
-
-    {
-        let file_path = path.join("alevin").join("quants_mat_rows.txt");
-        let file_handle = File::open(file_path)?;
-        let file = BufReader::new(&file_handle);
-
-        for line in file.lines() {
-            let l = line.expect("can't read names from cb file");
-            cb_names.push(l);
-        }
-    }
-
-    {
-        let file_path = path.join("alevin").join("quants_mat_cols.txt");
-        let file_handle = File::open(file_path)?;
-        let file = BufReader::new(&file_handle);
-
-        for line in file.lines() {
-            let l = line.expect("can't read names from gene file");
-            gene_names.push(l);
-        }
-    }
-
-    let num_cells = cb_names.len();
-    let num_genes = gene_names.len();
-    info!("Found {} cbs and {} genes", num_cells, num_genes);
-
     let num_bit_vecs: usize = round::ceil(num_genes as f64 / 8.0, 0) as usize;
     let mut total_molecules = 0.0;
 
     {
         let mut count = 0;
-        let file_path = path.join("alevin").join("quants_mat.gz");
-        let file_handle = File::open(file_path)?;
+        let file_handle = File::open(input)?;
         let mut file = GzDecoder::new(file_handle);
 
         for _ in 0..num_cells {
