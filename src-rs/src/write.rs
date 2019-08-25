@@ -75,9 +75,10 @@ pub fn write_csv(
     let mut file = GzEncoder::new(file_handle, Compression::default());
 
     let mut header = "\"\"".to_string();
-    for gid in 1..num_features {
+    for gid in 1..num_features + 1 {
         header.push_str(&format!(",gene{}", gid));
     }
+    header.push_str(&format!("\n"));
     file.write_all(header.as_bytes())?;
 
     let mut mtx_data: String;
@@ -101,14 +102,24 @@ pub fn write_csv(
         mtx_data = format!("cell{}", cell_id + 1);
         let mut zero_counter = 0;
         for (index, count) in exp.into_iter().enumerate() {
+            assert!(fids[index] < num_features,
+                    format!("{} position > {}", fids[index], num_features));
+
             while zero_counter != fids[index] {
                 zero_counter += 1;
                 mtx_data.push_str(&format!(",0"));
             }
+
+            zero_counter += 1;
             mtx_data.push_str(&format!(",{}", count));
         }
-        mtx_data.push_str(&format!("\n"));
 
+        while zero_counter < num_features {
+            zero_counter += 1;
+            mtx_data.push_str(&format!(",0"));
+        }
+
+        mtx_data.push_str(&format!("\n"));
         file.write_all(mtx_data.as_bytes())?;
     }
 
