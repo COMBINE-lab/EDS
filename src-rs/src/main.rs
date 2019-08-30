@@ -10,32 +10,19 @@ extern crate log;
 
 mod parse;
 mod write;
+mod utils;
 
 use clap::{App, Arg, ArgMatches, SubCommand};
 use std::io;
+use utils::FileType;
 
 fn convert_file(sub_m: &ArgMatches) -> Result<(), io::Error> {
-    let file_path = sub_m.value_of("eds")
+    let input_file_path = sub_m.value_of("input")
         .unwrap();
 
-    let mut file_type: Option<&str> = None;
-
-    file_type = match sub_m.is_present("mtx") {
-        true => Some("mtx"),
-        false => file_type,
-    };
-
-    file_type = match sub_m.is_present("csv") {
-        true => Some("csv"),
-        false => file_type,
-    };
-
-    file_type = match sub_m.is_present("csc") {
-        true => Some("csc"),
-        false => file_type,
-    };
-
-    if file_type.is_none() { unreachable!() }
+    let output_file_type = utils::find_output_format(sub_m);
+    let (input_file_type, output_file_path) =
+        utils::get_output_path( input_file_path, output_file_type.clone() );
 
     let mut alphas: Vec<Vec<f32>> = Vec::new();
     let mut bit_vecs: Vec<Vec<u8>> = Vec::new();
@@ -52,21 +39,30 @@ fn convert_file(sub_m: &ArgMatches) -> Result<(), io::Error> {
         .parse()
         .unwrap();
 
-    info!("Starting to read EDS file");
-    parse::read_eds(
-        file_path.clone(),
-        num_cells,
-        num_features,
-        &mut alphas,
-        &mut bit_vecs,
-    )?;
-
-    info!("Done Reading Quants; generating {}", file_type.unwrap());
-    match file_type.unwrap() {
-        "mtx" => write::write_mtx(file_path, alphas, bit_vecs, num_cells, num_features)?,
-        "csv" => write::write_csv(file_path, alphas, bit_vecs, num_cells, num_features)?,
-        "csc" => write::write_csc(file_path, alphas, bit_vecs, num_cells, num_features)?,
+    info!("Starting to read {} file", input_file_path);
+    match input_file_type {
+        FileType::EDS =>
+            parse::read_eds(
+                input_file_path.clone(),
+                num_cells,
+                num_features,
+                &mut alphas,
+                &mut bit_vecs,
+            )?,
         _ => unreachable!(),
+    };
+
+    info!("Done Reading Input file");
+    info!("Output file path: {}", output_file_path);
+
+    match output_file_type {
+        FileType::MTX =>
+            write::write_mtx(output_file_path, alphas, bit_vecs, num_cells, num_features)?,
+        FileType::CSV =>
+            write::write_csv(output_file_path, alphas, bit_vecs, num_cells, num_features)?,
+        FileType::H5 =>
+            write::write_h5(output_file_path, alphas, bit_vecs, num_cells, num_features)?,
+        FileType::EDS => unreachable!(),
     };
 
     info!("All Done!");
@@ -84,23 +80,34 @@ fn main() -> io::Result<()> {
                 .arg(
                     Arg::with_name("mtx")
                         .long("mtx")
+                        .conflicts_with("eds")
                         .conflicts_with("csv")
-                        .conflicts_with("csc")
+                        .conflicts_with("h5")
                         .help("convert to matrix market exchange file"),
                 )
                 .arg(
-                    Arg::with_name("csc")
-                        .long("csc")
+                    Arg::with_name("h5")
+                        .long("h5")
+                        .conflicts_with("eds")
                         .conflicts_with("csv")
                         .conflicts_with("mtx")
-                        .help("convert to Compressed Sparse Column file"),
+                        .help("convert to h5 wrapped csc file"),
                 )
                 .arg(
                     Arg::with_name("csv")
                         .long("csv")
+                        .conflicts_with("eds")
                         .conflicts_with("mtx")
-                        .conflicts_with("csc")
+                        .conflicts_with("h5")
                         .help("convert to comma separated file"),
+                )
+                .arg(
+                    Arg::with_name("eds")
+                        .long("eds")
+                        .conflicts_with("csv")
+                        .conflicts_with("mtx")
+                        .conflicts_with("h5")
+                        .help("convert to EDS file"),
                 )
                 .arg(
                     Arg::with_name("cells")
@@ -117,13 +124,13 @@ fn main() -> io::Result<()> {
                         .help("Number of features"),
                 )
                 .arg(
-                    Arg::with_name("eds")
-                        .long("eds")
-                        .short("e")
+                    Arg::with_name("input")
+                        .long("input")
+                        .short("i")
                         .takes_value(true)
                         .requires("cells")
                         .requires("features")
-                        .help("path to (zipped) eds file"),
+                        .help("path to input file"),
                 ),
         )
         .get_matches();
