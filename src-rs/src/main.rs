@@ -3,6 +3,7 @@ extern crate clap;
 extern crate flate2;
 extern crate math;
 extern crate pretty_env_logger;
+extern crate hdf5;
 
 #[macro_use]
 extern crate log;
@@ -17,15 +18,24 @@ fn convert_file(sub_m: &ArgMatches) -> Result<(), io::Error> {
     let file_path = sub_m.value_of("eds")
         .unwrap();
 
-    let file_type = match sub_m.is_present("mtx") {
-        true => "mtx",
-        false => {
-            match sub_m.is_present("csv") {
-                true => "csv",
-                false => panic!("Neither csv nor mtx output format specified"),
-            }
-        }
+    let mut file_type: Option<&str> = None;
+
+    file_type = match sub_m.is_present("mtx") {
+        true => Some("mtx"),
+        false => file_type,
     };
+
+    file_type = match sub_m.is_present("csv") {
+        true => Some("csv"),
+        false => file_type,
+    };
+
+    file_type = match sub_m.is_present("csc") {
+        true => Some("csc"),
+        false => file_type,
+    };
+
+    if file_type.is_none() { unreachable!() }
 
     let mut alphas: Vec<Vec<f32>> = Vec::new();
     let mut bit_vecs: Vec<Vec<u8>> = Vec::new();
@@ -51,14 +61,11 @@ fn convert_file(sub_m: &ArgMatches) -> Result<(), io::Error> {
         &mut bit_vecs,
     )?;
 
-    info!("Done Reading Quants; generating {}", file_type);
-    match file_type {
-        "mtx" => {
-            write::write_mtx(file_path, alphas, bit_vecs, num_cells, num_features)?;
-        }
-        "csv" => {
-            write::write_csv(file_path, alphas, bit_vecs, num_cells, num_features)?;
-        }
+    info!("Done Reading Quants; generating {}", file_type.unwrap());
+    match file_type.unwrap() {
+        "mtx" => write::write_mtx(file_path, alphas, bit_vecs, num_cells, num_features)?,
+        "csv" => write::write_csv(file_path, alphas, bit_vecs, num_cells, num_features)?,
+        "csc" => write::write_csc(file_path, alphas, bit_vecs, num_cells, num_features)?,
         _ => unreachable!(),
     };
 
@@ -78,13 +85,22 @@ fn main() -> io::Result<()> {
                     Arg::with_name("mtx")
                         .long("mtx")
                         .conflicts_with("csv")
-                        .help("convert to mtx file"),
+                        .conflicts_with("csc")
+                        .help("convert to matrix market exchange file"),
+                )
+                .arg(
+                    Arg::with_name("csc")
+                        .long("csc")
+                        .conflicts_with("csv")
+                        .conflicts_with("mtx")
+                        .help("convert to Compressed Sparse Column file"),
                 )
                 .arg(
                     Arg::with_name("csv")
                         .long("csv")
                         .conflicts_with("mtx")
-                        .help("convert to csv file"),
+                        .conflicts_with("csc")
+                        .help("convert to comma separated file"),
                 )
                 .arg(
                     Arg::with_name("cells")

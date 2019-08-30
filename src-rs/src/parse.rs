@@ -18,6 +18,7 @@ pub fn read_eds(
 
     let num_bit_vecs: usize = round::ceil(num_genes as f64 / 8.0, 0) as usize;
     let mut total_molecules = 0.0;
+    let mut total_exp_values = 0;
 
     {
         let mut count = 0;
@@ -43,6 +44,7 @@ pub fn read_eds(
             expr.push(float_buffer);
 
             count += 1;
+            total_exp_values += num_ones;
             if count % 100 == 0 {
                 print!("\r Done Reading {} cells", count);
                 io::stdout().flush()?;
@@ -57,6 +59,7 @@ pub fn read_eds(
     );
 
     info!("Found Total {:.2} molecules", total_molecules);
+    info!("Found Total {:.2} expressed entries", total_exp_values);
     info!(
         "w/ {:.2} Molecules/cell",
         total_molecules / num_cells as f32

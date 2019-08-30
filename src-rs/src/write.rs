@@ -3,6 +3,10 @@ use flate2::Compression;
 use std::fs::File;
 use std::io;
 use std::io::Write;
+use std::mem;
+
+use byteorder::ByteOrder;
+use byteorder::LittleEndian;
 
 pub fn write_mtx(
     input: &str,
@@ -121,6 +125,63 @@ pub fn write_csv(
 
         mtx_data.push_str(&format!("\n"));
         file.write_all(mtx_data.as_bytes())?;
+    }
+
+    Ok(true)
+}
+
+pub fn write_csc(
+    input: &str,
+    expressions: Vec<Vec<f32>>,
+    bit_vecs: Vec<Vec<u8>>,
+    num_cells: usize,
+    _num_features: usize,
+) -> Result<bool, io::Error> {
+    let mut path_str = input.to_string();
+    let offset = path_str
+        .find(".eds.gz")
+        .unwrap_or(path_str.len());
+
+    path_str.replace_range(offset.., ".csc.gz");
+
+    let file_handle = File::create(path_str)?;
+    let mut file = GzEncoder::new(file_handle, Compression::default());
+
+    assert!(bit_vecs.len() == expressions.len(), "length of bit vec and expression is not same");
+    let mut lens: Vec<u32> = vec![0];
+    for (index, exp) in expressions.iter().enumerate() {
+        lens.push( lens[index] + exp.len() as u32 );
+    }
+
+    lens.pop();
+    assert!(lens.len() == num_cells, "num cells doesn't match");
+    let mut lens_bits: Vec<u8> = vec![0; mem::size_of::<u32>() * lens.len()];
+    LittleEndian::write_u32_into(&lens, &mut lens_bits);
+    file.write_all(&lens_bits)?;
+
+    for (cell_id, bit_vec) in bit_vecs.iter().enumerate() {
+        let exp = &expressions[cell_id];
+        let mut expression: Vec<u8> = vec![0; mem::size_of::<f32>() * exp.len()];
+        LittleEndian::write_f32_into(&exp, &mut expression);
+        file.write_all(&expression)?;
+
+        let mut fids: Vec<u32> = Vec::new();
+
+        for (feature_id, flag) in bit_vec.into_iter().enumerate() {
+            if *flag != 0 {
+                for (offset, j) in format!("{:8b}", flag).chars().enumerate() {
+                    match j {
+                        '1' => fids.push( (8 * feature_id) as u32 + offset as u32 ),
+                        _ => (),
+                    };
+                }
+            }
+        }
+
+        assert!(fids.len() == expressions[cell_id].len(), "#positions doesn't match with #expressed features");
+        let mut positions: Vec<u8> = vec![0; mem::size_of::<u32>() * fids.len()];
+        LittleEndian::write_u32_into(&fids, &mut positions);
+        file.write_all(&positions)?;
     }
 
     Ok(true)
