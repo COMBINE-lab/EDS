@@ -1,15 +1,17 @@
 extern crate byteorder;
 extern crate clap;
 extern crate flate2;
+extern crate hdf5;
 extern crate math;
 extern crate pretty_env_logger;
-extern crate hdf5;
 
 #[macro_use]
 extern crate log;
 
-mod parse;
-mod write;
+mod csv;
+mod eds;
+mod h5;
+mod mtx;
 mod utils;
 
 use clap::{App, Arg, ArgMatches, SubCommand};
@@ -17,12 +19,11 @@ use std::io;
 use utils::FileType;
 
 fn convert_file(sub_m: &ArgMatches) -> Result<(), io::Error> {
-    let input_file_path = sub_m.value_of("input")
-        .unwrap();
+    let input_file_path = sub_m.value_of("input").unwrap();
 
     let output_file_type = utils::find_output_format(sub_m);
     let (input_file_type, output_file_path) =
-        utils::get_output_path( input_file_path, output_file_type.clone() );
+        utils::get_output_path(input_file_path, output_file_type.clone());
 
     let mut alphas: Vec<Vec<f32>> = Vec::new();
     let mut bit_vecs: Vec<Vec<u8>> = Vec::new();
@@ -41,14 +42,13 @@ fn convert_file(sub_m: &ArgMatches) -> Result<(), io::Error> {
 
     info!("Starting to read {} file", input_file_path);
     match input_file_type {
-        FileType::EDS =>
-            parse::read_eds(
-                input_file_path.clone(),
-                num_cells,
-                num_features,
-                &mut alphas,
-                &mut bit_vecs,
-            )?,
+        FileType::EDS => eds::reader(
+            input_file_path.clone(),
+            num_cells,
+            num_features,
+            &mut alphas,
+            &mut bit_vecs,
+        )?,
         _ => unreachable!(),
     };
 
@@ -56,12 +56,9 @@ fn convert_file(sub_m: &ArgMatches) -> Result<(), io::Error> {
     info!("Output file path: {}", output_file_path);
 
     match output_file_type {
-        FileType::MTX =>
-            write::write_mtx(output_file_path, alphas, bit_vecs, num_cells, num_features)?,
-        FileType::CSV =>
-            write::write_csv(output_file_path, alphas, bit_vecs, num_cells, num_features)?,
-        FileType::H5 =>
-            write::write_h5(output_file_path, alphas, bit_vecs, num_cells, num_features)?,
+        FileType::MTX => mtx::writer(output_file_path, alphas, bit_vecs, num_cells, num_features)?,
+        FileType::CSV => csv::writer(output_file_path, alphas, bit_vecs, num_cells, num_features)?,
+        FileType::H5 => h5::writer(output_file_path, alphas, bit_vecs, num_cells, num_features)?,
         FileType::EDS => unreachable!(),
     };
 

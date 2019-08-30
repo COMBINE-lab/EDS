@@ -6,7 +6,7 @@ use byteorder::{ByteOrder, LittleEndian};
 use flate2::read::GzDecoder;
 use math::round;
 
-pub fn read_eds(
+pub fn reader(
     input: &str,
     num_cells: usize,
     num_genes: usize,
@@ -14,7 +14,10 @@ pub fn read_eds(
     bit_vecs: &mut Vec<Vec<u8>>,
 ) -> Result<bool, io::Error> {
     info!("Using {} as input EDS file\n", input);
-    info!("Using {} Rows (cells) and {} Columns (features)", num_cells, num_genes);
+    info!(
+        "Using {} Rows (cells) and {} Columns (features)",
+        num_cells, num_genes
+    );
 
     let num_bit_vecs: usize = round::ceil(num_genes as f64 / 8.0, 0) as usize;
     let mut total_molecules = 0.0;
