@@ -12,8 +12,8 @@ There are other formats (such as [loom](https://github.com/linnarsson-lab/loompy
 We have a simple rust code inside the `src-rs`, it can be installed using `cargo build --release` and can be used as `./target/release/eds convert -e <eds_file> -c <num_cells> -f <num_features>`.
 
 ## Benchmark
-![Disk Space](https://github.com/COMBINE-lab/EDS/blob/master/benchmarks/size.pdf)
-![Loading time](https://github.com/COMBINE-lab/EDS/blob/master/benchmarks/time.pdf)
+![Disk Space](https://github.com/COMBINE-lab/EDS/blob/master/benchmarks/size.jpg)
+![Loading time](https://github.com/COMBINE-lab/EDS/blob/master/benchmarks/time.jpg)
 
 ## Future 
 - [ ] Benchmarks
