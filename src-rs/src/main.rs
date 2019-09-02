@@ -40,9 +40,15 @@ fn convert_file(sub_m: &ArgMatches) -> Result<(), io::Error> {
         .parse()
         .unwrap();
 
-    info!("Starting to read {} file", input_file_path);
     match input_file_type {
         FileType::EDS => eds::reader(
+            input_file_path.clone(),
+            num_cells,
+            num_features,
+            &mut alphas,
+            &mut bit_vecs,
+        )?,
+        FileType::MTX => mtx::reader(
             input_file_path.clone(),
             num_cells,
             num_features,

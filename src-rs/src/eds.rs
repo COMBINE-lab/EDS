@@ -69,29 +69,3 @@ pub fn reader(
     );
     Ok(true)
 }
-
-//#[cfg(test)]
-//mod tests {
-//    use super::read_alevin_quants;
-//
-//    #[test]
-//    fn neurons_900() {
-//        let input_directory = "/mnt/scratch5/avi/alevin/bin/salmon/tests/alevin_test_data/";
-//        let mut expr: Vec<Vec<f32>> = Vec::new();
-//        let mut bit_vecs: Vec<Vec<u8>> = Vec::new();
-//
-//        match read_alevin_quants(input_directory, &mut expr, &mut bit_vecs) {
-//            Ok(true) => (),
-//            Ok(false) => panic!(),
-//            Err(_) => panic!(),
-//        };
-//
-//        let mut total_molecules = 0.0;
-//        for cell in &expr {
-//            let cell_count: f32 = cell.iter().sum();
-//            total_molecules += cell_count;
-//        }
-//
-//        assert!(total_molecules >= 3425370.0 && total_molecules <= 3425372.0);
-//    }
-//}

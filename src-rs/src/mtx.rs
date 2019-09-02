@@ -1,8 +1,109 @@
 use flate2::write::GzEncoder;
+use flate2::read::GzDecoder;
 use flate2::Compression;
 use std::fs::File;
 use std::io;
-use std::io::Write;
+use std::collections::HashMap;
+use std::io::{Write, BufReader, BufRead};
+use math::round;
+
+pub fn reader(
+    input: &str,
+    num_cells: usize,
+    num_genes: usize,
+    expr: &mut Vec<Vec<f32>>,
+    bit_vecs: &mut Vec<Vec<u8>>,
+) -> Result<bool, io::Error> {
+    info!("Using {} as input MTX file\n", input);
+    info!(
+        "Using {} Rows (cells) and {} Columns (features)",
+        num_cells, num_genes
+    );
+
+    let file_handle = File::open(input)?;
+    let file = BufReader::new( GzDecoder::new(file_handle) );
+
+    let cell_index = 0;
+    let gene_index = 1;
+    let mut found_first = false;
+    let mut triplets: Vec<HashMap<u32, f32>> = vec![ HashMap::new(); num_cells ];
+
+    for line in file.lines() {
+        let record = line?;
+        if record.chars().nth(0).unwrap() == '%' {
+            continue;
+        }
+
+        let vals: Vec<&str> = record.split("\t")
+            .collect();
+
+        let gid = vals[gene_index].parse::<u32>().unwrap();
+        let cid = vals[cell_index].parse::<usize>().unwrap();
+        let value = vals[2].parse::<f32>().unwrap();
+
+        if ! found_first {
+            found_first = true;
+
+            assert!(num_cells == cid );
+            assert!(num_genes == gid as usize);
+            continue;
+        }
+
+        triplets[cid - 1].insert(gid - 1, value);
+    }
+
+    for cell_data in triplets {
+        let mut keys: Vec<u32> = cell_data.keys()
+            .cloned()
+            .collect();
+        keys.sort();
+
+        let values: Vec<f32> = keys.iter().map( |key| cell_data[key] )
+            .collect();
+
+        expr.push(values);
+
+        let num_exp_genes = keys.len();
+        let num_bit_vecs: usize = round::ceil(num_genes as f64 / 8.0, 0) as usize;
+        let mut bit_vec: Vec<u8> = vec![0; num_bit_vecs];
+
+        let mut min_processed_close = 0;
+        let mut max_processed_open = 8;
+        let mut curr_index = 0;
+        let mut flag: u8 = 0;
+
+        for key in keys {
+            assert!(key >= min_processed_close);
+            assert!(curr_index < num_bit_vecs);
+
+            let offset: u8 = (key % 8) as u8;
+            if key < max_processed_open {
+                flag |= 128u8 >> offset;
+            } else {
+                bit_vec[curr_index] = flag;
+
+                while key >= max_processed_open {
+                    curr_index += 1;
+                    min_processed_close = max_processed_open;
+                    max_processed_open += 8;
+                }
+                flag = 128u8 >> offset;
+            }
+        }
+        bit_vec[curr_index] = flag;
+
+        let mut num_ones = 0;
+        for bits in bit_vec.iter() {
+            num_ones += bits.count_ones();
+        }
+        assert!(num_ones as usize == num_exp_genes,
+                format!("{:?} {:?}", num_ones, num_exp_genes));
+
+        bit_vecs.push(bit_vec);
+    }
+
+    Ok(true)
+}
 
 pub fn writer(
     path_str: String,

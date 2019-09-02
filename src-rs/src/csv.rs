@@ -43,7 +43,8 @@ pub fn writer(
 
         assert!(
             fids.len() == exp.len(),
-            "#positions doesn't match with #expressed features"
+            format!("#positions {} doesn't match with #expressed features {}",
+                    fids.len(), exp.len())
         );
         mtx_data = format!("cell{}", cell_id + 1);
         let mut zero_counter = 0;
