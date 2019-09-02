@@ -12,11 +12,14 @@ There are other formats (such as [loom](https://github.com/linnarsson-lab/loompy
 We have a simple rust code inside the `src-rs`, it can be installed using `cargo build --release` and can be used as `./target/release/eds convert -e <eds_file> -c <num_cells> -f <num_features>`.
 
 ## Benchmarks
-* Size on disk
+* Size on disk.
 ![Disk Space](https://github.com/COMBINE-lab/EDS/blob/master/benchmarks/size.jpg)
 
-* Matrix loading into memory time ( Not sure how to load a compressed `h5` i.e. `h5.gz` into R. )
+* Matrix loading into memory time.
 ![Loading time](https://github.com/COMBINE-lab/EDS/blob/master/benchmarks/time.jpg)
+
+* Memory required to load the matrix.
+![Memory Usage](https://github.com/COMBINE-lab/EDS/blob/master/benchmarks/memory.jpg)
 
 ## Future 
 - [ ] Support delayedArray R object
