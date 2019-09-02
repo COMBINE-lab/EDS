@@ -65,7 +65,7 @@ fn convert_file(sub_m: &ArgMatches) -> Result<(), io::Error> {
         FileType::MTX => mtx::writer(output_file_path, alphas, bit_vecs, num_cells, num_features)?,
         FileType::CSV => csv::writer(output_file_path, alphas, bit_vecs, num_cells, num_features)?,
         FileType::H5 => h5::writer(output_file_path, alphas, bit_vecs, num_cells, num_features)?,
-        FileType::EDS => unreachable!(),
+        FileType::EDS => eds::writer(output_file_path, alphas, bit_vecs, num_cells, num_features)?,
     };
 
     info!("All Done!");

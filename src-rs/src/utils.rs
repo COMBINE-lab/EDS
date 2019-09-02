@@ -1,4 +1,6 @@
+use math::round;
 use clap::ArgMatches;
+use std::collections::HashMap;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum FileType {
@@ -104,9 +106,65 @@ pub fn get_output_path(input_path: &str, otype: FileType) -> (FileType, String) 
         FileType::MTX => opath.replace_range(offset.., ".mtx.gz"),
         FileType::CSV => opath.replace_range(offset.., ".csv.gz"),
         FileType::H5 => opath.replace_range(offset.., ".h5"),
-        //FileType::EDS => opath.replace_range(offset.., "eds.gz");
-        FileType::EDS => unreachable!(),
+        FileType::EDS => opath.replace_range(offset.., ".eds.gz"),
+        //FileType::EDS => unreachable!(),
     }
 
     (itype, opath)
+}
+
+pub fn triplets_to_eds(triplets: &Vec<HashMap<u32, f32>>,
+                       expr: &mut Vec<Vec<f32>>,
+                       bit_vecs: &mut Vec<Vec<u8>>,
+                       num_genes: usize,
+) {
+    for cell_data in triplets {
+        let mut keys: Vec<u32> = cell_data.keys()
+            .cloned()
+            .collect();
+        keys.sort();
+
+        let values: Vec<f32> = keys.iter().map( |key| cell_data[key] )
+            .collect();
+
+        expr.push(values);
+
+        let num_exp_genes = keys.len();
+        let num_bit_vecs: usize = round::ceil(num_genes as f64 / 8.0, 0) as usize;
+        let mut bit_vec: Vec<u8> = vec![0; num_bit_vecs];
+
+        let mut min_processed_close = 0;
+        let mut max_processed_open = 8;
+        let mut curr_index = 0;
+        let mut flag: u8 = 0;
+
+        for key in keys {
+            assert!(key >= min_processed_close);
+            assert!(curr_index < num_bit_vecs);
+
+            let offset: u8 = (key % 8) as u8;
+            if key < max_processed_open {
+                flag |= 128u8 >> offset;
+            } else {
+                bit_vec[curr_index] = flag;
+
+                while key >= max_processed_open {
+                    curr_index += 1;
+                    min_processed_close = max_processed_open;
+                    max_processed_open += 8;
+                }
+                flag = 128u8 >> offset;
+            }
+        }
+        bit_vec[curr_index] = flag;
+
+        let mut num_ones = 0;
+        for bits in bit_vec.iter() {
+            num_ones += bits.count_ones();
+        }
+        assert!(num_ones as usize == num_exp_genes,
+                format!("{:?} {:?}", num_ones, num_exp_genes));
+
+        bit_vecs.push(bit_vec);
+    }
 }

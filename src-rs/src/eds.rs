@@ -6,6 +6,9 @@ use byteorder::{ByteOrder, LittleEndian};
 use flate2::read::GzDecoder;
 use math::round;
 
+use flate2::write::GzEncoder;
+use flate2::Compression;
+
 pub fn reader(
     input: &str,
     num_cells: usize,
@@ -67,5 +70,27 @@ pub fn reader(
         "w/ {:.2} Molecules/cell",
         total_molecules / num_cells as f32
     );
+    Ok(true)
+}
+
+pub fn writer(
+    path_str: String,
+    expressions: Vec<Vec<f32>>,
+    bit_vecs: Vec<Vec<u8>>,
+    _num_cells: usize,
+    _num_features: usize,
+) -> Result<bool, io::Error> {
+    let file_handle = File::create(path_str)?;
+    let mut file = GzEncoder::new(file_handle, Compression::default());
+
+    assert!(expressions.len() == bit_vecs.len());
+    for (exp, bvec) in expressions.into_iter().zip(bit_vecs.into_iter()) {
+        file.write_all(&bvec)?;
+
+        let mut bin_exp: Vec<u8> = vec![0_u8; exp.len() * 4];
+        LittleEndian::write_f32_into(&exp, &mut bin_exp);
+        file.write_all(&bin_exp)?;
+    }
+
     Ok(true)
 }
