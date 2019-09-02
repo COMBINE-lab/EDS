@@ -1,26 +1,22 @@
 import gzip
 import loompy
-import pandas as pd
 import numpy as np
+import sys
+from scipy.io import mmread
 
-data = "pbmc_8k"
-csv_file = "./" + data + "/quants_mat.csv.gz"
-out_file = "./" + data + "/quants_mat.loom"
+data = sys.argv[1]
+mtx_file = "/mnt/scratch1/avi/anton/alevin_r/EDS/benchmarks/data/" + data + "/quants_mat.mtx.gz"
+out_file = "/mnt/scratch1/avi/anton/alevin_r/EDS/benchmarks/data/" + data + "/quants_mat.loom"
 
-data = pd.read_csv( gzip.open(csv_file) )
+data = mmread( gzip.open(mtx_file) )
+(cells, feats) = data.shape
 
 data = data.T
-data.drop("Unnamed: 0", axis=0, inplace=True)
-datas = np.array(data.values, dtype=float)
 
-rows = pd.DataFrame(data.index)
-rows.columns = ['rname']
-row_names = rows.to_dict("list")
-row_names['rname'] = np.array(row_names['rname'])
+row_names = {}
+row_names['rname'] = np.array(range(feats))
 
-cols = pd.DataFrame(data.columns)
-cols.columns = ['cname']
-col_names = cols.to_dict("list")
-col_names['cname'] = np.array(col_names['cname'])
+col_names = {}
+col_names['cname'] = np.array( range(cells) )
 
-loompy.create(out_file, datas, row_names, col_names)
+loompy.create(out_file, data, row_names, col_names)
