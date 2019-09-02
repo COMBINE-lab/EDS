@@ -1,6 +1,6 @@
-datas=("neurons_900" "neurons_2k" "neurons_9k" "pbmc_4k" "pbmc_8k" "pbmc_40k" "neurons_450k")
+datas=("neurons_900" "neurons_2k" "pbmc_4k" "pbmc_8k" "neurons_9k" "pbmc_40k" "neurons_450k")
 cells=(931 2022 4340 8381 9128 43400 456400)
-feats=(50686 50686 50686 58278 58278 58278 50686)
+feats=(50686 50686 58278 58278 50686 58278 50686)
 
 for id in {0..6}; do
 	data=${datas[$id]}

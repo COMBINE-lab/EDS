@@ -1,19 +1,17 @@
 \begin{center}
- \begin{tabular}{||c || c | c | c | c | c||}
+ \begin{tabular}{||c || c | c | c | c | c | c | c ||}
  \hline
- Loading (seconds) & neurons\_900 & neurons\_2k & pbmc\_4k & pbmc\_8k & neurons\_9k \\ [0.5ex]
+\vtop{\hbox{\strut Loading}\hbox{\strut (Second)}} & neurons\_900 & neurons\_2k & pbmc\_4k & pbmc\_8k & neurons\_9k & pbmc\_4k*10 & neurons\_9k*50 \\ [0.5ex]
  \hline\hline
- eds.gz & 0.439 & 0.906 & 1.443 & 2.550 & 3.304 \\
+  eds.gz & 0.282 & 0.862 & 1.491 & 2.297 & 3.235 & 9.878 & 119.611 \\
  \hline
- csv.gz & 37.287 & 62.957 & 114.670 & 126.859 & 143.729 \\
+ csv.gz & 28.917 & 40.153 & 75.299 & 134.441 & 144.958 & 680.075 & 6768.713 \\
  \hline
- h5.gz & - & - & - & - & - \\
+ h5 & 0.831 & 1.56 & 1.648 & 3.883 & 5.719 & 10.105 & 276.359 \\
  \hline
- mtx.gz & 1.931 & 3.657 & 4.322 & 7.926 & 13.798 \\
+ mtx.gz & 1.933 & 2.365 & 3.529 & 6.886 & 12.452 & 26.838 & 536.912 \\
  \hline
- loom & 1.192 & 2.479 & 4.891 & 7.770 & 8.962 \\
- \hline
- h5 & 0.817 & 1.598 & 1.943 & 2.787 & 5.310 \\ [1ex]
+ loom & 0.984 & 1.823 & 4.078 & 7.668 & 8.045 & 44.819 & 400.991 \\ [1ex]
  \hline
 \end{tabular}
 \end{center}
