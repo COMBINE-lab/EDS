@@ -16,6 +16,7 @@ pub fn writer(
 
     let shape = group
         .new_dataset::<u64>()
+        .gzip(6)
         .create("shape", 2)
         .expect("can't write shape in h5");
 
@@ -45,6 +46,7 @@ pub fn writer(
 
         let indptr = group
             .new_dataset::<u32>()
+            .gzip(6)
             .create("indptr", indptr_vals.len())
             .expect("can't write indptr in h5");
 
@@ -56,6 +58,7 @@ pub fn writer(
     {
         let data = group
             .new_dataset::<f32>()
+            .gzip(6)
             .create("data", total_entries as usize)
             .expect("can't write data in h5");
 
@@ -75,6 +78,7 @@ pub fn writer(
     {
         let indices = group
             .new_dataset::<u32>()
+            .gzip(6)
             .create("indices", total_entries as usize)
             .expect("can't write positions in h5");
 

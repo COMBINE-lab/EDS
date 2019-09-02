@@ -21,7 +21,6 @@ sparse.mat <- sparseMatrix(
   dims = shp[],
   giveCsparse = TRUE
 )
-
 })
 
 str(sparse.mat)
