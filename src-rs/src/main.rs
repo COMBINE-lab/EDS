@@ -18,15 +18,12 @@ use clap::{App, Arg, ArgMatches, SubCommand};
 use std::io;
 use utils::FileType;
 
-fn convert_file(sub_m: &ArgMatches) -> Result<(), io::Error> {
+fn randomize_file(sub_m: &ArgMatches) -> Result<(), io::Error> {
     let input_file_path = sub_m.value_of("input").unwrap();
+    let output_file_type = FileType::Dummy(".random".to_string());
 
-    let output_file_type = utils::find_output_format(sub_m);
     let (input_file_type, output_file_path) =
         utils::get_output_path(input_file_path, output_file_type.clone());
-
-    let mut alphas: Vec<Vec<f32>> = Vec::new();
-    let mut bit_vecs: Vec<Vec<u8>> = Vec::new();
 
     let num_cells: usize = sub_m
         .value_of("cells")
@@ -40,33 +37,45 @@ fn convert_file(sub_m: &ArgMatches) -> Result<(), io::Error> {
         .parse()
         .unwrap();
 
-    match input_file_type {
-        FileType::EDS => eds::reader(
-            input_file_path.clone(),
-            num_cells,
-            num_features,
-            &mut alphas,
-            &mut bit_vecs,
-        )?,
-        FileType::MTX => mtx::reader(
-            input_file_path.clone(),
-            num_cells,
-            num_features,
-            &mut alphas,
-            &mut bit_vecs,
-        )?,
-        _ => unreachable!(),
-    };
+    let (bit_vecs, alphas) = utils::read_file(input_file_path,
+                                              input_file_type.clone(),
+                                              num_cells,
+                                              num_features)?;
 
-    info!("Done Reading Input file");
-    info!("Output file path: {}", output_file_path);
+    let (bit_vecs, alphas) = utils::randomize( bit_vecs, alphas )?;
+    utils::write_file( output_file_path, input_file_type,
+                       bit_vecs, alphas, num_cells, num_features)?;
 
-    match output_file_type {
-        FileType::MTX => mtx::writer(output_file_path, alphas, bit_vecs, num_cells, num_features)?,
-        FileType::CSV => csv::writer(output_file_path, alphas, bit_vecs, num_cells, num_features)?,
-        FileType::H5 => h5::writer(output_file_path, alphas, bit_vecs, num_cells, num_features)?,
-        FileType::EDS => eds::writer(output_file_path, alphas, bit_vecs, num_cells, num_features)?,
-    };
+    info!("All Done!");
+    Ok(())
+}
+
+fn convert_file(sub_m: &ArgMatches) -> Result<(), io::Error> {
+    let input_file_path = sub_m.value_of("input").unwrap();
+    let output_file_type = utils::find_output_format(sub_m);
+
+    let (input_file_type, output_file_path) =
+        utils::get_output_path(input_file_path, output_file_type.clone());
+
+    let num_cells: usize = sub_m
+        .value_of("cells")
+        .expect("can't find #cells")
+        .parse()
+        .unwrap();
+
+    let num_features = sub_m
+        .value_of("features")
+        .expect("can't find #features")
+        .parse()
+        .unwrap();
+
+    let (bit_vecs, alphas) = utils::read_file(input_file_path,
+                                              input_file_type,
+                                              num_cells,
+                                              num_features)?;
+
+    utils::write_file( output_file_path, output_file_type,
+                       bit_vecs, alphas, num_cells, num_features)?;
 
     info!("All Done!");
     Ok(())
@@ -77,6 +86,33 @@ fn main() -> io::Result<()> {
         .version("0.1.0")
         .author("Avi Srivastava, Mike Love and Rob Patro")
         .about("Efficient scData Storage format")
+        .subcommand(
+            SubCommand::with_name("randomize")
+                .about("randomize the order of cells")
+                .arg(
+                    Arg::with_name("cells")
+                        .long("cells")
+                        .short("c")
+                        .takes_value(true)
+                        .help("Number of cells"),
+                )
+                .arg(
+                    Arg::with_name("features")
+                        .long("features")
+                        .short("f")
+                        .takes_value(true)
+                        .help("Number of features"),
+                )
+                .arg(
+                    Arg::with_name("input")
+                        .long("input")
+                        .short("i")
+                        .takes_value(true)
+                        .requires("cells")
+                        .requires("features")
+                        .help("path to input file"),
+                ),
+        )
         .subcommand(
             SubCommand::with_name("convert")
                 .about("comnvert from eds data format to csv or mtx format")
@@ -142,6 +178,14 @@ fn main() -> io::Result<()> {
     match matches.subcommand_matches("convert") {
         Some(sub_m) => {
             let ret = convert_file(&sub_m);
+            return ret;
+        }
+        None => (),
+    };
+
+    match matches.subcommand_matches("randomize") {
+        Some(sub_m) => {
+            let ret = randomize_file(&sub_m);
             return ret;
         }
         None => (),
