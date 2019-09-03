@@ -23,8 +23,12 @@ pub fn reader(
     let file_handle = File::open(input)?;
     let file = BufReader::new( GzDecoder::new(file_handle) );
 
-    let cell_index = 0;
-    let gene_index = 1;
+    let cell_by_gene = true;
+    let (cell_index, gene_index) = match cell_by_gene {
+        true => (0, 1),
+        false => (1, 0),
+    };
+
     let mut found_first = false;
     let mut triplets: Vec<HashMap<u32, f32>> = vec![ HashMap::new(); num_cells ];
 
@@ -37,9 +41,12 @@ pub fn reader(
         let vals: Vec<&str> = record.split("\t")
             .collect();
 
-        let gid = vals[gene_index].parse::<u32>().unwrap();
-        let cid = vals[cell_index].parse::<usize>().unwrap();
-        let value = vals[2].parse::<f32>().unwrap();
+        let gid = vals[gene_index].parse::<u32>()
+            .expect("can't convert gid");
+        let cid = vals[cell_index].parse::<usize>()
+            .expect("can't convert cid");
+        let value = vals[2].parse::<f32>()
+            .expect("can't convert value");
 
         if ! found_first {
             found_first = true;
