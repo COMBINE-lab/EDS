@@ -18,7 +18,6 @@ pub enum FileType {
     Dummy(String),
 }
 
-
 pub fn write_file( file_path: String,
                    file_type: FileType,
                    bit_vecs: Vec<Vec<u8>>,
