@@ -1,6 +1,8 @@
 ## What's EDS ?
 EDS is an accronym for Efficient single cell binary Data Storage format for the cell-feature count matrices.
 
+![EDS](https://github.com/COMBINE-lab/EDS/blob/master/eds.jpg)
+
 ## Why we need a new storage format ?
 Recent advancements in single-cell technologies have seen rapid increase in the amount of data. Most single-cell studies generate a cell by feature (can be gene) count matrices, where the number of cells are now reaching towards millions. Traditional Single-cell quantification pipelines use matrix market exchange (mtx) format (sometimes gzipped) for sharing the count matrices. However, the textual representation of mtx format makes it bigger in size compared to a compressed binary format. Our quantification tool [alevin](https://combine-lab.github.io/alevin-tutorial/) dumps the output in EDS format which saves storage space.
 
