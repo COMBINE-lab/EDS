@@ -11,7 +11,7 @@ Recent advancements in single-cell technologies have seen rapid increase in the 
 There are other formats (such as [loom](https://github.com/linnarsson-lab/loompy)) which are designed for optimizing the query of the matrix. EDS is primarily designed to improve the storage efficiency rather than query and currently don't support random access to a cell (row).
 
 ## How to convert eds to mtx format ?
-We have a simple rust code inside the `src-rs`, it can be installed using `cargo build --release` and can be used as `./target/release/eds convert -e <eds_file> -c <num_cells> -f <num_features>`.
+We have a simple rust code inside the `src-rs`, it can be installed using `cargo build --release` and can be used as `./target/release/eds convert -i <input gzipped file currently [eds.gz | mtx.gz]> --[mtx | eds | h5 | csv] -c <num_cells> -f <num_features>`.
 
 ## Benchmarks
 * Size on disk.
