@@ -1,5 +1,5 @@
 use std::io;
-use std::collections::HashMap;
+use std::io::Write;
 use std::cmp::Ordering::Equal;
 
 const K_NEAREST: usize = 10;
@@ -104,27 +104,32 @@ pub fn generate(bit_vecs: Vec<Vec<u8>>,
     info!("generating Priors");
     assert!( bit_vecs.len() == alphas.len() );
 
+    let mut count = 0;
     let num_cells = alphas.len();
 
     // get all-v-all distances
-    let mut dists: HashMap<u32, HashMap<u32, f32>> = HashMap::new();
+    let mut dists: Vec<Vec<f32>> = Vec::new();
     for i in 0..num_cells {
-        let mut cell_dists = HashMap::new();
+        let mut cell_dists = vec![0.0; num_cells];
         for j in 0..num_cells {
-            cell_dists.insert( j as u32,
-                               get_manhattan_distance(&bit_vecs, &alphas, i, j)?
-            );
+            cell_dists[ j ] = get_manhattan_distance(&bit_vecs, &alphas, i, j)?
         }
+        dists.push( cell_dists );
 
-        dists.insert(i as u32, cell_dists);
+        count += 1;
+        print!("\r Done Calculating for {} cells", count);
+        io::stdout().flush()?;
     }
+    info!("Done All-v-All Distance Calculation");
 
     let mut nbit_vecs = Vec::new();
     let mut nalphas = Vec::new();
-    for (cell_id, cell_dists) in dists {
+    for (cell_id, cell_dists) in dists.into_iter().enumerate() {
         let mut cell_bit_vecs = bit_vecs[cell_id as usize].clone();
         let mut cell_alphas = alphas[cell_id as usize].clone();
-        let mut cell_dists_vec: Vec<_> = cell_dists.iter().collect();
+        let mut cell_dists_vec: Vec<_> = cell_dists.iter()
+            .enumerate()
+            .collect();
 
         cell_dists_vec.sort_by(|a, b| a.1.partial_cmp(b.1).unwrap_or(Equal));
         for (nidx, (ncell_id, _)) in cell_dists_vec.into_iter().enumerate(){
@@ -132,8 +137,8 @@ pub fn generate(bit_vecs: Vec<Vec<u8>>,
 
             let summay_counts = add_rows(&cell_bit_vecs,
                                          &cell_alphas,
-                                         &bit_vecs[*ncell_id as usize],
-                                         &alphas[*ncell_id as usize])?;
+                                         &bit_vecs[ncell_id],
+                                         &alphas[ncell_id])?;
             cell_bit_vecs = summay_counts.0;
             cell_alphas = summay_counts.1;
 
