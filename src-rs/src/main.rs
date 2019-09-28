@@ -45,7 +45,7 @@ fn randomize_file(sub_m: &ArgMatches) -> Result<(), io::Error> {
                                               num_features)?;
 
     let (bit_vecs, alphas) = utils::randomize( bit_vecs, alphas )?;
-    utils::write_file( output_file_path, input_file_type,
+    utils::write_file( output_file_path, output_file_type,
                        bit_vecs, alphas, num_cells, num_features)?;
 
     info!("All Done!");
@@ -77,7 +77,7 @@ fn generate_prior(sub_m: &ArgMatches) -> Result<(), io::Error> {
                                               num_features)?;
 
     let (bit_vecs, alphas) = prior::generate( bit_vecs, alphas )?;
-    utils::write_file( output_file_path, input_file_type,
+    utils::write_file( output_file_path, output_file_type,
                        bit_vecs, alphas, num_cells, num_features)?;
 
     info!("All Done!");

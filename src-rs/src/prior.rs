@@ -117,3 +117,20 @@ pub fn generate(bit_vecs: Vec<Vec<u8>>,
     let (nbit_vecs, nalphas) = csv::dense_to_eds_sparse(ncounts, bit_vecs[0].len());
     Ok((nbit_vecs, nalphas))
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::prior::{read_flag, generate};
+
+    #[test]
+    fn test_read_flag() {
+        assert_eq!( read_flag(128), vec![true, false, false, false, false, false, false, false]);
+    }
+
+    #[test]
+    fn test_generate() {
+        assert!( generate(vec![vec![0], vec![128]], vec![vec![], vec![22.0]]).unwrap() ==
+                 (vec![ vec![128], vec![128] ], vec![ vec![2.2], vec![2.2]])
+        );
+    }
+}
