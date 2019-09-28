@@ -4,6 +4,31 @@ use std::fs::File;
 use std::io;
 use std::io::Write;
 
+pub fn dense_to_eds_sparse(matrix: Vec<Vec<f32>>,
+                           num_bvecs: usize,
+) -> (Vec<Vec<u8>>, Vec<Vec<f32>>) {
+    info!("Converting Dense matrix to EDS sparse");
+
+    let num_cells = matrix.len();
+    let mut bvecs = vec![vec![0; num_bvecs]; num_cells];
+    let mut alphas = vec![Vec::new(); num_cells];
+    for (row_id, row) in matrix.into_iter().enumerate() {
+        assert!( row.len() == num_bvecs * 8 );
+
+        for (flag_id, flag) in bvecs[row_id].iter_mut().enumerate(){
+            for i in 0..8 {
+                let col_id = flag_id*8+i;
+                if row[col_id] > 0.0 {
+                    alphas[row_id].push(row[col_id]);
+                    *flag |= 128u8 >> i;
+                }
+            }
+        }
+    }
+
+    (bvecs, alphas)
+}
+
 pub fn writer(
     path_str: String,
     expressions: Vec<Vec<f32>>,

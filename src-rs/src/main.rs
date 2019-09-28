@@ -3,6 +3,7 @@ extern crate clap;
 extern crate flate2;
 extern crate hdf5;
 extern crate math;
+extern crate rayon;
 extern crate pretty_env_logger;
 
 #[macro_use]

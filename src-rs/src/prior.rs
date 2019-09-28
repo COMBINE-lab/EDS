@@ -1,6 +1,11 @@
 use std::io;
+use std::thread;
 use std::io::Write;
 use std::cmp::Ordering::Equal;
+
+use crate::csv;
+use rayon::prelude::*;
+use std::sync::mpsc::channel;
 
 const K_NEAREST: usize = 10;
 
@@ -16,117 +21,79 @@ fn read_flag(flag: u8) -> Vec<bool> {
     markers
 }
 
-fn get_manhattan_distance(bit_vecs: &Vec<Vec<u8>>,
-                          alphas: &Vec<Vec<f32>>,
-                          cid1: usize, cid2: usize)
-                          -> Result<f32, io::Error> {
-    let (bvec1, alphas1) = (&bit_vecs[cid1], &alphas[cid1]);
-    let (bvec2, alphas2) = (&bit_vecs[cid2], &alphas[cid2]);
-
-    assert_eq!(bvec1.len(), bvec2.len());
-    let mut distance: f32 = 0.0;
-    let (mut spos1, mut spos2) = (0, 0);
-    for i in 0..bvec1.len() {
-        let markers1 = read_flag(bvec1[i]);
-        let markers2 = read_flag(bvec2[i]);
-
-        for j in 0..8 {
-            match (markers1[j], markers2[j]) {
-                (true, true) => {
-                    distance += (alphas1[spos1] - alphas2[spos2]).abs();
-                    spos1 += 1;
-                    spos2 += 1;
-                },
-                (false, true) => {
-                    distance += alphas2[spos2];
-                    spos2 += 1;
-                },
-                (true, false) => {
-                    distance += alphas1[spos1];
-                    spos1 += 1;
-                },
-                (false, false) => (),
-            }// end-match
-        } // end-j for
-    } // end-i for
-
-    assert_eq!(spos1, alphas1.len());
-    assert_eq!(spos2, alphas2.len());
-
-    Ok(distance)
-}
-
-fn add_rows(obvec: &Vec<u8>,
-            oalphas: &Vec<f32>,
-            nbvec: &Vec<u8>,
-            nalphas: &Vec<f32>
-) -> Result<(Vec<u8>, Vec<f32>), io::Error> {
-    assert_eq!(obvec.len(), nbvec.len());
-    let (mut spos1, mut spos2) = (0, 0);
-
-    let mut bvec = Vec::new();
-    let mut alphas = Vec::new();
-
-    for i in 0..obvec.len() {
-        let markers1 = read_flag(obvec[i]);
-        let markers2 = read_flag(nbvec[i]);
-
-        bvec.push( obvec[i] | nbvec[i] );
-        for j in 0..8 {
-            match (markers1[j], markers2[j]) {
-                (true, true) => {
-                    alphas.push( oalphas[spos1] + nalphas[spos2]);
-                    spos1 += 1;
-                    spos2 += 1;
-                },
-                (false, true) => {
-                    alphas.push(nalphas[spos2]);
-                    spos2 += 1;
-                },
-                (true, false) => {
-                    alphas.push(oalphas[spos1]);
-                    spos1 += 1;
-                },
-                (false, false) => (),
-            }// end-match
-        } // end-j for
-    } // end-i for
-
-    assert_eq!(spos1, oalphas.len());
-    assert_eq!(spos2, nalphas.len());
-
-    Ok((bvec, alphas))
-}
-
 pub fn generate(bit_vecs: Vec<Vec<u8>>,
                 alphas: Vec<Vec<f32>>,
 ) -> Result<(Vec<Vec<u8>>, Vec<Vec<f32>>), io::Error> {
     info!("generating Priors");
     assert!( bit_vecs.len() == alphas.len() );
 
-    let mut count = 0;
     let num_cells = alphas.len();
+    let num_genes = bit_vecs[0].len() * 8;
+
+    let mut matrix: Vec<Vec<f32>> = vec![vec![0.0; num_genes]; num_cells];
+    for i in 0..num_cells {
+        let cell_bit_vec = &bit_vecs[i];
+        let cell_alphas = &alphas[i];
+        let mut aidx = 0;
+
+        for (j, flag) in cell_bit_vec.into_iter().enumerate() {
+            for (k, marker) in read_flag(*flag).into_iter().enumerate() {
+                match marker {
+                    true => {
+                        let pos = j*8+k;
+                        matrix[i][pos] = alphas[i][aidx];
+                        aidx += 1;
+                    },
+                    false => (),
+                }
+            }
+        }
+        assert_eq!(aidx, cell_alphas.len());
+    }
+    info!("Done densifying matrix");
 
     // get all-v-all distances
-    let mut dists: Vec<Vec<f32>> = Vec::new();
-    for i in 0..num_cells {
-        let mut cell_dists = vec![0.0; num_cells];
-        for j in 0..num_cells {
-            cell_dists[ j ] = get_manhattan_distance(&bit_vecs, &alphas, i, j)?
-        }
-        dists.push( cell_dists );
+    let (sender, receiver) = channel();
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(20)
+        .build_global()
+        .unwrap();
 
-        count += 1;
-        print!("\r Done Calculating for {} cells", count);
-        io::stdout().flush()?;
-    }
+    let mut dists = vec![vec![0.0; num_cells]; num_cells];
+    let computation = thread::spawn(move || {
+        let mut processed = 0;
+        for value in receiver.iter() {
+            match value {
+                Some((i, j, dist)) => dists[i as usize][j] = dist,
+                None => {
+                    processed += 1;
+                    print!("\r Done Processing {} cells.", processed);
+                    io::stdout().flush().unwrap();
+                },
+            }// end-match
+        }// end-for
+
+        dists
+    });
+
+    matrix.par_iter()
+        .enumerate()
+        .for_each_with(sender, |s, (i, cell_1)| {
+            for (j, cell_2) in matrix.iter().enumerate() {
+                let mut dist = 0.0;
+                cell_1.iter().zip(cell_2).for_each(|(a, b)| dist += (a - b).abs());
+                s.send(Some((i, j, dist))).unwrap();
+            }
+            s.send(None).unwrap();
+        });
+
+    println!("\n");
+    let dists = computation.join().unwrap();
     info!("Done All-v-All Distance Calculation");
 
-    let mut nbit_vecs = Vec::new();
-    let mut nalphas = Vec::new();
+    let mut ncounts = Vec::new();
     for (cell_id, cell_dists) in dists.into_iter().enumerate() {
-        let mut cell_bit_vecs = bit_vecs[cell_id as usize].clone();
-        let mut cell_alphas = alphas[cell_id as usize].clone();
+        let mut cell_counts = matrix[cell_id].clone();
         let mut cell_dists_vec: Vec<_> = cell_dists.iter()
             .enumerate()
             .collect();
@@ -135,22 +102,18 @@ pub fn generate(bit_vecs: Vec<Vec<u8>>,
         for (nidx, (ncell_id, _)) in cell_dists_vec.into_iter().enumerate(){
             if nidx == 0 { continue; }
 
-            let summay_counts = add_rows(&cell_bit_vecs,
-                                         &cell_alphas,
-                                         &bit_vecs[ncell_id],
-                                         &alphas[ncell_id])?;
-            cell_bit_vecs = summay_counts.0;
-            cell_alphas = summay_counts.1;
-
+            cell_counts.iter_mut().zip(matrix[ncell_id].iter()).for_each(|(a, b)| *a += b);
             if nidx == K_NEAREST { break; } // use only top K_NEAREST
         }
 
-        cell_alphas.iter_mut()
+        cell_counts.iter_mut()
             .for_each(|x| *x /= K_NEAREST as f32);
 
-        nbit_vecs.push(cell_bit_vecs);
-        nalphas.push(cell_alphas);
+        ncounts.push(cell_counts);
     }
+    info!("Done Creating Manhattan Prior");
 
+
+    let (nbit_vecs, nalphas) = csv::dense_to_eds_sparse(ncounts, bit_vecs[0].len());
     Ok((nbit_vecs, nalphas))
 }
