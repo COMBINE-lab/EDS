@@ -4,20 +4,63 @@ use std::fs::File;
 use std::io;
 use std::io::Write;
 
-pub fn dense_to_eds_sparse(matrix: Vec<Vec<f32>>,
-                           num_bvecs: usize,
-) -> (Vec<Vec<u8>>, Vec<Vec<f32>>) {
+fn read_flag(flag: u8) -> Vec<bool> {
+    let mut markers: Vec<bool> = Vec::new();
+    for j in format!("{:8b}", flag).chars() {
+        match j {
+            '1' => markers.push(true),
+            _ => markers.push(false),
+        };
+    } // end-for
+
+    markers
+}
+
+pub fn eds_sparse_to_dense(
+    num_cells: usize,
+    num_genes: usize,
+    bit_vecs: Vec<Vec<u8>>,
+    alphas: Vec<Vec<f32>>,
+) -> Vec<Vec<f32>> {
+    info!("Densifying matrix");
+    let mut matrix: Vec<Vec<f32>> = vec![vec![0.0; num_genes]; num_cells];
+    for i in 0..num_cells {
+        let cell_bit_vec = &bit_vecs[i];
+        let cell_alphas = &alphas[i];
+        let mut aidx = 0;
+
+        for (j, flag) in cell_bit_vec.into_iter().enumerate() {
+            for (k, marker) in read_flag(*flag).into_iter().enumerate() {
+                match marker {
+                    true => {
+                        let pos = j * 8 + k;
+                        matrix[i][pos] = alphas[i][aidx];
+                        aidx += 1;
+                    }
+                    false => (),
+                }
+            }
+        }
+        assert_eq!(aidx, cell_alphas.len());
+    }
+    matrix
+}
+
+pub fn dense_to_eds_sparse(
+    matrix: Vec<Vec<f32>>,
+    num_bvecs: usize,
+) -> Result<(Vec<Vec<u8>>, Vec<Vec<f32>>), io::Error> {
     info!("Converting Dense matrix to EDS sparse");
 
     let num_cells = matrix.len();
     let mut bvecs = vec![vec![0; num_bvecs]; num_cells];
     let mut alphas = vec![Vec::new(); num_cells];
     for (row_id, row) in matrix.into_iter().enumerate() {
-        assert!( row.len() == num_bvecs * 8 );
+        assert!(row.len() == num_bvecs * 8);
 
-        for (flag_id, flag) in bvecs[row_id].iter_mut().enumerate(){
+        for (flag_id, flag) in bvecs[row_id].iter_mut().enumerate() {
             for i in 0..8 {
-                let col_id = flag_id*8+i;
+                let col_id = flag_id * 8 + i;
                 if row[col_id] > 0.0 {
                     alphas[row_id].push(row[col_id]);
                     *flag |= 128u8 >> i;
@@ -26,7 +69,7 @@ pub fn dense_to_eds_sparse(matrix: Vec<Vec<f32>>,
         }
     }
 
-    (bvecs, alphas)
+    Ok((bvecs, alphas))
 }
 
 pub fn writer(
@@ -44,7 +87,7 @@ pub fn writer(
         header.push_str(&format!(",gene{}", gid));
     }
     header.push_str(&format!("\n"));
-    file.write_all(header.as_bytes())?;
+    //file.write_all(header.as_bytes())?;
 
     let mut mtx_data: String;
     assert!(
@@ -68,10 +111,14 @@ pub fn writer(
 
         assert!(
             fids.len() == exp.len(),
-            format!("#positions {} doesn't match with #expressed features {}",
-                    fids.len(), exp.len())
+            format!(
+                "#positions {} doesn't match with #expressed features {}",
+                fids.len(),
+                exp.len()
+            )
         );
-        mtx_data = format!("cell{}", cell_id + 1);
+        //mtx_data = format!("cell{}", cell_id + 1);
+        mtx_data = format!("");
         let mut zero_counter = 0;
         for (index, count) in exp.into_iter().enumerate() {
             assert!(
@@ -81,16 +128,16 @@ pub fn writer(
 
             while zero_counter != fids[index] {
                 zero_counter += 1;
-                mtx_data.push_str(&format!(",0"));
+                mtx_data.push_str(&format!("0,"));
             }
 
             zero_counter += 1;
-            mtx_data.push_str(&format!(",{}", count));
+            mtx_data.push_str(&format!("{},", count));
         }
 
         while zero_counter < num_features {
             zero_counter += 1;
-            mtx_data.push_str(&format!(",0"));
+            mtx_data.push_str(&format!("0,"));
         }
 
         mtx_data.push_str(&format!("\n"));

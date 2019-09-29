@@ -1,13 +1,13 @@
-use math::round;
 use clap::ArgMatches;
+use math::round;
 use std::collections::HashMap;
 
+use rand::seq::SliceRandom;
+use rand::thread_rng;
 use std;
 use std::io;
-use rand::thread_rng;
-use rand::seq::SliceRandom;
 
-use crate::{h5, mtx, csv, eds};
+use crate::{csv, eds, h5, mtx};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum FileType {
@@ -18,12 +18,13 @@ pub enum FileType {
     Dummy(String),
 }
 
-pub fn write_file( file_path: String,
-                   file_type: FileType,
-                   bit_vecs: Vec<Vec<u8>>,
-                   alphas: Vec<Vec<f32>>,
-                   num_cells: usize,
-                   num_features: usize,
+pub fn write_file(
+    file_path: String,
+    file_type: FileType,
+    bit_vecs: Vec<Vec<u8>>,
+    alphas: Vec<Vec<f32>>,
+    num_cells: usize,
+    num_features: usize,
 ) -> Result<bool, io::Error> {
     info!("Writing Output into file path: {}", file_path);
 
@@ -38,10 +39,11 @@ pub fn write_file( file_path: String,
     Ok(true)
 }
 
-pub fn read_file(file_path: &str,
-                 file_type: FileType,
-                 num_cells: usize,
-                 num_features: usize,
+pub fn read_file(
+    file_path: &str,
+    file_type: FileType,
+    num_cells: usize,
+    num_features: usize,
 ) -> Result<(Vec<Vec<u8>>, Vec<Vec<f32>>), io::Error> {
     let mut alphas: Vec<Vec<f32>> = Vec::new();
     let mut bit_vecs: Vec<Vec<u8>> = Vec::new();
@@ -68,11 +70,12 @@ pub fn read_file(file_path: &str,
     Ok((bit_vecs, alphas))
 }
 
-pub fn randomize(bit_vecs: Vec<Vec<u8>>,
-                 alphas: Vec<Vec<f32>>,
+pub fn randomize(
+    bit_vecs: Vec<Vec<u8>>,
+    alphas: Vec<Vec<f32>>,
 ) -> Result<(Vec<Vec<u8>>, Vec<Vec<f32>>), io::Error> {
     info!("Randomizing order");
-    assert!( bit_vecs.len() == alphas.len() );
+    assert!(bit_vecs.len() == alphas.len());
 
     let num_elem = bit_vecs.len() as u32;
     let mut order: Vec<u32> = (0..num_elem).collect();
@@ -191,19 +194,17 @@ pub fn get_output_path(input_path: &str, otype: FileType) -> (FileType, String) 
     (itype, opath)
 }
 
-pub fn triplets_to_eds(triplets: &Vec<HashMap<u32, f32>>,
-                       expr: &mut Vec<Vec<f32>>,
-                       bit_vecs: &mut Vec<Vec<u8>>,
-                       num_genes: usize,
+pub fn triplets_to_eds(
+    triplets: &Vec<HashMap<u32, f32>>,
+    expr: &mut Vec<Vec<f32>>,
+    bit_vecs: &mut Vec<Vec<u8>>,
+    num_genes: usize,
 ) {
     for cell_data in triplets {
-        let mut keys: Vec<u32> = cell_data.keys()
-            .cloned()
-            .collect();
+        let mut keys: Vec<u32> = cell_data.keys().cloned().collect();
         keys.sort();
 
-        let values: Vec<f32> = keys.iter().map( |key| cell_data[key] )
-            .collect();
+        let values: Vec<f32> = keys.iter().map(|key| cell_data[key]).collect();
 
         expr.push(values);
 
@@ -240,8 +241,10 @@ pub fn triplets_to_eds(triplets: &Vec<HashMap<u32, f32>>,
         for bits in bit_vec.iter() {
             num_ones += bits.count_ones();
         }
-        assert!(num_ones as usize == num_exp_genes,
-                format!("{:?} {:?}", num_ones, num_exp_genes));
+        assert!(
+            num_ones as usize == num_exp_genes,
+            format!("{:?} {:?}", num_ones, num_exp_genes)
+        );
 
         bit_vecs.push(bit_vec);
     }

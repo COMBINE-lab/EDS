@@ -1,7 +1,7 @@
-use std::io;
-use std::thread;
-use std::io::Write;
 use std::cmp::Ordering::Equal;
+use std::io;
+use std::io::Write;
+use std::thread;
 
 use crate::csv;
 use rayon::prelude::*;
@@ -9,53 +9,16 @@ use std::sync::mpsc::channel;
 
 const K_NEAREST: usize = 10;
 
-fn read_flag(flag: u8) -> Vec<bool> {
-    let mut markers: Vec<bool> = Vec::new();
-    for j in format!("{:8b}", flag).chars() {
-        match j {
-            '1' => markers.push(true),
-            _ => markers.push(false),
-        };
-    } // end-for
+fn get_all_v_all(
+    num_cells: usize,
+    matrix: &Vec<Vec<f32>>,
+) -> Result<Vec<Vec<f32>>, std::boxed::Box<(dyn std::any::Any + std::marker::Send + 'static)>> {
+    info!("Calculating All-v-All Distances");
 
-    markers
-}
-
-pub fn generate(bit_vecs: Vec<Vec<u8>>,
-                alphas: Vec<Vec<f32>>,
-) -> Result<(Vec<Vec<u8>>, Vec<Vec<f32>>), io::Error> {
-    info!("generating Priors");
-    assert!( bit_vecs.len() == alphas.len() );
-
-    let num_cells = alphas.len();
-    let num_genes = bit_vecs[0].len() * 8;
-
-    let mut matrix: Vec<Vec<f32>> = vec![vec![0.0; num_genes]; num_cells];
-    for i in 0..num_cells {
-        let cell_bit_vec = &bit_vecs[i];
-        let cell_alphas = &alphas[i];
-        let mut aidx = 0;
-
-        for (j, flag) in cell_bit_vec.into_iter().enumerate() {
-            for (k, marker) in read_flag(*flag).into_iter().enumerate() {
-                match marker {
-                    true => {
-                        let pos = j*8+k;
-                        matrix[i][pos] = alphas[i][aidx];
-                        aidx += 1;
-                    },
-                    false => (),
-                }
-            }
-        }
-        assert_eq!(aidx, cell_alphas.len());
-    }
-    info!("Done densifying matrix");
-
-    // get all-v-all distances
+    let num_threads = 20;
     let (sender, receiver) = channel();
     rayon::ThreadPoolBuilder::new()
-        .num_threads(20)
+        .num_threads(num_threads)
         .build_global()
         .unwrap();
 
@@ -69,68 +32,102 @@ pub fn generate(bit_vecs: Vec<Vec<u8>>,
                     processed += 1;
                     print!("\r Done Processing {} cells.", processed);
                     io::stdout().flush().unwrap();
-                },
-            }// end-match
-        }// end-for
+                }
+            } // end-match
+        } // end-for
 
         dists
     });
 
-    matrix.par_iter()
+    matrix
+        .par_iter()
         .enumerate()
         .for_each_with(sender, |s, (i, cell_1)| {
             for (j, cell_2) in matrix.iter().enumerate() {
                 let mut dist = 0.0;
-                cell_1.iter().zip(cell_2).for_each(|(a, b)| dist += (a - b).abs());
+                cell_1
+                    .iter()
+                    .zip(cell_2)
+                    .for_each(|(a, b)| dist += (a - b).abs());
                 s.send(Some((i, j, dist))).unwrap();
             }
             s.send(None).unwrap();
         });
 
     println!("\n");
-    let dists = computation.join().unwrap();
-    info!("Done All-v-All Distance Calculation");
+    computation.join()
+}
 
-    let mut ncounts = Vec::new();
+fn create_manhattan_prior(
+    matrix: Vec<Vec<f32>>,
+    dists: Vec<Vec<f32>>,
+) -> Result<Vec<Vec<f32>>, io::Error> {
+    info!("Creating Manhattan Prior");
+    let mut priors = Vec::new();
     for (cell_id, cell_dists) in dists.into_iter().enumerate() {
         let mut cell_counts = matrix[cell_id].clone();
-        let mut cell_dists_vec: Vec<_> = cell_dists.iter()
-            .enumerate()
-            .collect();
+        let mut cell_dists_vec: Vec<_> = cell_dists.iter().enumerate().collect();
 
         cell_dists_vec.sort_by(|a, b| a.1.partial_cmp(b.1).unwrap_or(Equal));
-        for (nidx, (ncell_id, _)) in cell_dists_vec.into_iter().enumerate(){
-            if nidx == 0 { continue; }
+        for (nidx, (ncell_id, _)) in cell_dists_vec.into_iter().enumerate() {
+            if nidx == 0 {
+                continue;
+            }
 
-            cell_counts.iter_mut().zip(matrix[ncell_id].iter()).for_each(|(a, b)| *a += b);
-            if nidx == K_NEAREST { break; } // use only top K_NEAREST
+            cell_counts
+                .iter_mut()
+                .zip(matrix[ncell_id].iter())
+                .for_each(|(a, b)| *a += b);
+            if nidx == K_NEAREST {
+                break;
+            } // use only top K_NEAREST
         }
 
-        cell_counts.iter_mut()
-            .for_each(|x| *x /= K_NEAREST as f32);
+        cell_counts.iter_mut().for_each(|x| *x /= K_NEAREST as f32);
 
-        ncounts.push(cell_counts);
+        priors.push(cell_counts);
     }
-    info!("Done Creating Manhattan Prior");
 
+    Ok(priors)
+}
 
-    let (nbit_vecs, nalphas) = csv::dense_to_eds_sparse(ncounts, bit_vecs[0].len());
-    Ok((nbit_vecs, nalphas))
+pub fn generate(
+    bit_vecs: Vec<Vec<u8>>,
+    alphas: Vec<Vec<f32>>,
+) -> Result<(Vec<Vec<u8>>, Vec<Vec<f32>>), io::Error> {
+    info!("generating Priors");
+    assert!(bit_vecs.len() == alphas.len());
+
+    let num_cells = alphas.len();
+    let num_bvecs = bit_vecs[0].len();
+    let num_genes = num_bvecs * 8;
+
+    let matrix = csv::eds_sparse_to_dense(num_cells, num_genes, bit_vecs, alphas);
+
+    let dists = get_all_v_all(num_cells, &matrix).expect("can't get all v all distances");
+
+    let priors = create_manhattan_prior(matrix, dists)?;
+
+    csv::dense_to_eds_sparse(priors, num_bvecs)
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::prior::{read_flag, generate};
+    use crate::prior::{generate, read_flag};
 
     #[test]
     fn test_read_flag() {
-        assert_eq!( read_flag(128), vec![true, false, false, false, false, false, false, false]);
+        assert_eq!(
+            read_flag(128),
+            vec![true, false, false, false, false, false, false, false]
+        );
     }
 
     #[test]
     fn test_generate() {
-        assert!( generate(vec![vec![0], vec![128]], vec![vec![], vec![22.0]]).unwrap() ==
-                 (vec![ vec![128], vec![128] ], vec![ vec![2.2], vec![2.2]])
+        assert!(
+            generate(vec![vec![0], vec![128]], vec![vec![], vec![22.0]]).unwrap()
+                == (vec![vec![128], vec![128]], vec![vec![2.2], vec![2.2]])
         );
     }
 }

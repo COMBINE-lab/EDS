@@ -1,10 +1,10 @@
-use flate2::write::GzEncoder;
 use flate2::read::GzDecoder;
+use flate2::write::GzEncoder;
 use flate2::Compression;
+use std::collections::HashMap;
 use std::fs::File;
 use std::io;
-use std::collections::HashMap;
-use std::io::{Write, BufReader, BufRead};
+use std::io::{BufRead, BufReader, Write};
 
 use crate::utils::triplets_to_eds;
 pub fn reader(
@@ -21,7 +21,7 @@ pub fn reader(
     );
 
     let file_handle = File::open(input)?;
-    let file = BufReader::new( GzDecoder::new(file_handle) );
+    let file = BufReader::new(GzDecoder::new(file_handle));
 
     let cell_by_gene = true;
     let (cell_index, gene_index) = match cell_by_gene {
@@ -30,7 +30,7 @@ pub fn reader(
     };
 
     let mut found_first = false;
-    let mut triplets: Vec<HashMap<u32, f32>> = vec![ HashMap::new(); num_cells ];
+    let mut triplets: Vec<HashMap<u32, f32>> = vec![HashMap::new(); num_cells];
 
     for line in file.lines() {
         let record = line?;
@@ -38,20 +38,18 @@ pub fn reader(
             continue;
         }
 
-        let vals: Vec<&str> = record.split("\t")
-            .collect();
+        let vals: Vec<&str> = record.split("\t").collect();
 
-        let gid = vals[gene_index].parse::<u32>()
-            .expect("can't convert gid");
-        let cid = vals[cell_index].parse::<usize>()
+        let gid = vals[gene_index].parse::<u32>().expect("can't convert gid");
+        let cid = vals[cell_index]
+            .parse::<usize>()
             .expect("can't convert cid");
-        let value = vals[2].parse::<f32>()
-            .expect("can't convert value");
+        let value = vals[2].parse::<f32>().expect("can't convert value");
 
-        if ! found_first {
+        if !found_first {
             found_first = true;
 
-            assert!(num_cells == cid );
+            assert!(num_cells == cid);
             assert!(num_genes == gid as usize);
             continue;
         }

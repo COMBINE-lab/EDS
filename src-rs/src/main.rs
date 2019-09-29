@@ -3,8 +3,8 @@ extern crate clap;
 extern crate flate2;
 extern crate hdf5;
 extern crate math;
-extern crate rayon;
 extern crate pretty_env_logger;
+extern crate rayon;
 
 #[macro_use]
 extern crate log;
@@ -39,14 +39,22 @@ fn randomize_file(sub_m: &ArgMatches) -> Result<(), io::Error> {
         .parse()
         .unwrap();
 
-    let (bit_vecs, alphas) = utils::read_file(input_file_path,
-                                              input_file_type.clone(),
-                                              num_cells,
-                                              num_features)?;
+    let (bit_vecs, alphas) = utils::read_file(
+        input_file_path,
+        input_file_type.clone(),
+        num_cells,
+        num_features,
+    )?;
 
-    let (bit_vecs, alphas) = utils::randomize( bit_vecs, alphas )?;
-    utils::write_file( output_file_path, output_file_type,
-                       bit_vecs, alphas, num_cells, num_features)?;
+    let (bit_vecs, alphas) = utils::randomize(bit_vecs, alphas)?;
+    utils::write_file(
+        output_file_path,
+        output_file_type,
+        bit_vecs,
+        alphas,
+        num_cells,
+        num_features,
+    )?;
 
     info!("All Done!");
     Ok(())
@@ -71,14 +79,22 @@ fn generate_prior(sub_m: &ArgMatches) -> Result<(), io::Error> {
         .parse()
         .unwrap();
 
-    let (bit_vecs, alphas) = utils::read_file(input_file_path,
-                                              input_file_type.clone(),
-                                              num_cells,
-                                              num_features)?;
+    let (bit_vecs, alphas) = utils::read_file(
+        input_file_path,
+        input_file_type.clone(),
+        num_cells,
+        num_features,
+    )?;
 
-    let (bit_vecs, alphas) = prior::generate( bit_vecs, alphas )?;
-    utils::write_file( output_file_path, output_file_type,
-                       bit_vecs, alphas, num_cells, num_features)?;
+    let (bit_vecs, alphas) = prior::generate(bit_vecs, alphas)?;
+    utils::write_file(
+        output_file_path,
+        output_file_type,
+        bit_vecs,
+        alphas,
+        num_cells,
+        num_features,
+    )?;
 
     info!("All Done!");
     Ok(())
@@ -103,13 +119,17 @@ fn convert_file(sub_m: &ArgMatches) -> Result<(), io::Error> {
         .parse()
         .unwrap();
 
-    let (bit_vecs, alphas) = utils::read_file(input_file_path,
-                                              input_file_type,
-                                              num_cells,
-                                              num_features)?;
+    let (bit_vecs, alphas) =
+        utils::read_file(input_file_path, input_file_type, num_cells, num_features)?;
 
-    utils::write_file( output_file_path, output_file_type,
-                       bit_vecs, alphas, num_cells, num_features)?;
+    utils::write_file(
+        output_file_path,
+        output_file_type,
+        bit_vecs,
+        alphas,
+        num_cells,
+        num_features,
+    )?;
 
     info!("All Done!");
     Ok(())
