@@ -58,11 +58,11 @@ fn get_all_v_all(
     computation.join()
 }
 
-fn create_manhattan_prior(
+fn create_average_prior(
     matrix: Vec<Vec<f32>>,
     dists: Vec<Vec<f32>>,
 ) -> Result<Vec<Vec<f32>>, io::Error> {
-    info!("Creating Manhattan Prior");
+    info!("Creating Averaging Prior");
     let mut priors = Vec::new();
     for (cell_id, cell_dists) in dists.into_iter().enumerate() {
         let mut cell_counts = matrix[cell_id].clone();
@@ -91,6 +91,46 @@ fn create_manhattan_prior(
     Ok(priors)
 }
 
+fn create_cov_prior(
+    num_cells: usize,
+    num_genes: usize,
+    matrix: Vec<Vec<f32>>,
+    dists: Vec<Vec<f32>>,
+) -> Result<Vec<Vec<f32>>, io::Error> {
+    info!("Creating Intersection Prior");
+    let mut priors = vec![vec![0.0; num_genes]; num_cells];
+    for (cell_id, cell_dists) in dists.into_iter().enumerate() {
+        // extract K Nearest cells
+        let mut k_nearest_cells = Vec::new();
+        {
+            let mut cell_dists_vec: Vec<_> = cell_dists.into_iter().enumerate().collect();
+            cell_dists_vec.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(Equal));
+            for i in 0..K_NEAREST {
+                k_nearest_cells.push(cell_dists_vec[i].0);
+            }
+        }
+
+        let cell_prior = &mut priors[cell_id];
+        for j in 0..cell_prior.len() {
+            let mut count_distribution = Vec::new();
+            for i in &k_nearest_cells {
+                count_distribution.push( matrix[*i][j] )
+            }
+
+            let sum: f32 = count_distribution.iter().sum();
+            let mean: f32 = sum / count_distribution.len() as f32;
+
+            let mut variance: f32 = count_distribution.iter()
+                .map(|x| (x-mean).powf(2.0))
+                .sum();
+            variance /= count_distribution.len() as f32;
+            cell_prior[j] = mean / variance;
+        }
+    } // end-for cell-id for
+
+    Ok(priors)
+}
+
 pub fn generate(
     bit_vecs: Vec<Vec<u8>>,
     alphas: Vec<Vec<f32>>,
@@ -98,15 +138,15 @@ pub fn generate(
     info!("generating Priors");
     assert!(bit_vecs.len() == alphas.len());
 
-    let num_cells = alphas.len();
     let num_bvecs = bit_vecs[0].len();
     let num_genes = num_bvecs * 8;
+    let num_cells = alphas.len();
 
     let matrix = csv::eds_sparse_to_dense(num_cells, num_genes, bit_vecs, alphas);
 
     let dists = get_all_v_all(num_cells, &matrix).expect("can't get all v all distances");
 
-    let priors = create_manhattan_prior(matrix, dists)?;
+    let priors = create_cov_prior(num_cells, num_genes, matrix, dists)?;
 
     csv::dense_to_eds_sparse(priors, num_bvecs)
 }
