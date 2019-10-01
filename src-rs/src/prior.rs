@@ -2,12 +2,14 @@ use std::cmp::Ordering::Equal;
 use std::io;
 use std::io::Write;
 use std::thread;
+//use std::fs::File;
 
 use crate::csv;
 use rayon::prelude::*;
 use std::sync::mpsc::channel;
 
 const K_NEAREST: usize = 10;
+const NUM_THREADS: usize = 20;
 
 fn get_all_v_all(
     num_cells: usize,
@@ -15,10 +17,9 @@ fn get_all_v_all(
 ) -> Result<Vec<Vec<f32>>, std::boxed::Box<(dyn std::any::Any + std::marker::Send + 'static)>> {
     info!("Calculating All-v-All Distances");
 
-    let num_threads = 20;
     let (sender, receiver) = channel();
     rayon::ThreadPoolBuilder::new()
-        .num_threads(num_threads)
+        .num_threads(NUM_THREADS)
         .build_global()
         .unwrap();
 
@@ -58,7 +59,7 @@ fn get_all_v_all(
     computation.join()
 }
 
-fn create_average_prior(
+fn _create_average_prior(
     matrix: Vec<Vec<f32>>,
     dists: Vec<Vec<f32>>,
 ) -> Result<Vec<Vec<f32>>, io::Error> {
@@ -84,7 +85,6 @@ fn create_average_prior(
         }
 
         cell_counts.iter_mut().for_each(|x| *x /= K_NEAREST as f32);
-
         priors.push(cell_counts);
     }
 
@@ -99,35 +99,53 @@ fn create_cov_prior(
 ) -> Result<Vec<Vec<f32>>, io::Error> {
     info!("Creating Intersection Prior");
     let mut priors = vec![vec![0.0; num_genes]; num_cells];
+    //let mut file_handle = File::create("./dists.txt")?;
     for (cell_id, cell_dists) in dists.into_iter().enumerate() {
         // extract K Nearest cells
         let mut k_nearest_cells = Vec::new();
         {
             let mut cell_dists_vec: Vec<_> = cell_dists.into_iter().enumerate().collect();
             cell_dists_vec.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(Equal));
-            for i in 0..K_NEAREST {
+            for i in 1..=K_NEAREST {
                 k_nearest_cells.push(cell_dists_vec[i].0);
             }
         }
+
+        //file_handle.write_all(format!("{}", cell_id).as_bytes())?;
+        //for i in &k_nearest_cells {
+        //    file_handle.write_all(format!(",{}", i).as_bytes())?;
+        //}
+        //file_handle.write_all(b"\n")?;
 
         let cell_prior = &mut priors[cell_id];
         for j in 0..cell_prior.len() {
             let mut count_distribution = Vec::new();
             for i in &k_nearest_cells {
-                count_distribution.push( matrix[*i][j] )
+                count_distribution.push( matrix[*i][j] );
             }
 
-            let sum: f32 = count_distribution.iter().sum();
-            let mean: f32 = sum / count_distribution.len() as f32;
+            let zero_counter = count_distribution.into_iter()
+                .filter(|n| *n == 0.0)
+                .count();
 
-            let mut variance: f32 = count_distribution.iter()
-                .map(|x| (x-mean).powf(2.0))
-                .sum();
-            variance /= count_distribution.len() as f32;
-            cell_prior[j] = mean / variance;
+            //let sum: f32 = count_distribution.iter().sum();
+            //let mean: f32 = sum / count_distribution.len() as f32;
+
+            //let mut variance: f32 = count_distribution.iter()
+            //    .map(|x| (x-mean).powf(2.0))
+            //    .sum();
+            //variance /= count_distribution.len() as f32;
+
+            cell_prior[j] = if zero_counter > 0 { 0.0 } else { 1.0 };
+        }
+
+        if cell_id % 100 == 0 {
+            print!("\r Done Processing {} cells.", cell_id);
+            io::stdout().flush().unwrap();
         }
     } // end-for cell-id for
 
+    println!("\n");
     Ok(priors)
 }
 
