@@ -14,3 +14,11 @@ libmath = "0.2.1"
 hdf5 = "0.5.2"
 rand = "0.7.0"
 rayon = "1.2.0"
+
+[lib]
+name = "eds"
+path = "src/lib.rs"
+
+[[bin]]
+name = "eds"
+path = "src/main.rs"

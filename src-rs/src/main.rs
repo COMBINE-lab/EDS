@@ -1,139 +1,8 @@
-extern crate byteorder;
 extern crate clap;
-extern crate flate2;
-extern crate hdf5;
-extern crate math;
-extern crate pretty_env_logger;
-extern crate rayon;
 
-#[macro_use]
-extern crate log;
-
-mod csv;
-mod eds;
-mod h5;
-mod mtx;
-mod prior;
-mod utils;
-
-use clap::{App, Arg, ArgMatches, SubCommand};
+use eds;
 use std::io;
-use utils::FileType;
-
-fn randomize_file(sub_m: &ArgMatches) -> Result<(), io::Error> {
-    let input_file_path = sub_m.value_of("input").unwrap();
-    let output_file_type = FileType::Dummy(".random".to_string());
-
-    let (input_file_type, output_file_path) =
-        utils::get_output_path(input_file_path, output_file_type.clone());
-
-    let num_cells: usize = sub_m
-        .value_of("cells")
-        .expect("can't find #cells")
-        .parse()
-        .unwrap();
-
-    let num_features = sub_m
-        .value_of("features")
-        .expect("can't find #features")
-        .parse()
-        .unwrap();
-
-    let (bit_vecs, alphas) = utils::read_file(
-        input_file_path,
-        input_file_type.clone(),
-        num_cells,
-        num_features,
-    )?;
-
-    let (bit_vecs, alphas) = utils::randomize(bit_vecs, alphas)?;
-    utils::write_file(
-        output_file_path,
-        output_file_type,
-        bit_vecs,
-        alphas,
-        num_cells,
-        num_features,
-    )?;
-
-    info!("All Done!");
-    Ok(())
-}
-
-fn generate_prior(sub_m: &ArgMatches) -> Result<(), io::Error> {
-    let input_file_path = sub_m.value_of("input").unwrap();
-    let output_file_type = FileType::CSV;
-
-    let (input_file_type, output_file_path) =
-        utils::get_output_path(input_file_path, output_file_type.clone());
-
-    let num_cells: usize = sub_m
-        .value_of("cells")
-        .expect("can't find #cells")
-        .parse()
-        .unwrap();
-
-    let num_features = sub_m
-        .value_of("features")
-        .expect("can't find #features")
-        .parse()
-        .unwrap();
-
-    let (bit_vecs, alphas) = utils::read_file(
-        input_file_path,
-        input_file_type.clone(),
-        num_cells,
-        num_features,
-    )?;
-
-    let (bit_vecs, alphas) = prior::generate(bit_vecs, alphas)?;
-    utils::write_file(
-        output_file_path,
-        output_file_type,
-        bit_vecs,
-        alphas,
-        num_cells,
-        num_features,
-    )?;
-
-    info!("All Done!");
-    Ok(())
-}
-
-fn convert_file(sub_m: &ArgMatches) -> Result<(), io::Error> {
-    let input_file_path = sub_m.value_of("input").unwrap();
-    let output_file_type = utils::find_output_format(sub_m);
-
-    let (input_file_type, output_file_path) =
-        utils::get_output_path(input_file_path, output_file_type.clone());
-
-    let num_cells: usize = sub_m
-        .value_of("cells")
-        .expect("can't find #cells")
-        .parse()
-        .unwrap();
-
-    let num_features = sub_m
-        .value_of("features")
-        .expect("can't find #features")
-        .parse()
-        .unwrap();
-
-    let (bit_vecs, alphas) =
-        utils::read_file(input_file_path, input_file_type, num_cells, num_features)?;
-
-    utils::write_file(
-        output_file_path,
-        output_file_type,
-        bit_vecs,
-        alphas,
-        num_cells,
-        num_features,
-    )?;
-
-    info!("All Done!");
-    Ok(())
-}
+use clap::{App, Arg, SubCommand};
 
 fn main() -> io::Result<()> {
     let matches = App::new("EDS")
@@ -258,7 +127,7 @@ fn main() -> io::Result<()> {
     pretty_env_logger::init_timed();
     match matches.subcommand_matches("convert") {
         Some(sub_m) => {
-            let ret = convert_file(&sub_m);
+            let ret = eds::convert_file(&sub_m);
             return ret;
         }
         None => (),
@@ -266,7 +135,7 @@ fn main() -> io::Result<()> {
 
     match matches.subcommand_matches("randomize") {
         Some(sub_m) => {
-            let ret = randomize_file(&sub_m);
+            let ret = eds::randomize_file(&sub_m);
             return ret;
         }
         None => (),
@@ -274,7 +143,7 @@ fn main() -> io::Result<()> {
 
     match matches.subcommand_matches("prior") {
         Some(sub_m) => {
-            let ret = generate_prior(&sub_m);
+            let ret = eds::generate_prior(&sub_m);
             return ret;
         }
         None => (),
