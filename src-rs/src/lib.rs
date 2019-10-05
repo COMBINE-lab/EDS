@@ -8,12 +8,12 @@ extern crate rayon;
 #[macro_use]
 extern crate log;
 
-mod csv;
-mod eds;
-mod h5;
-mod mtx;
-mod prior;
-mod utils;
+pub mod csv;
+pub mod eds;
+pub mod h5;
+pub mod mtx;
+pub mod prior;
+pub mod utils;
 
 use std::io;
 use utils::FileType;
