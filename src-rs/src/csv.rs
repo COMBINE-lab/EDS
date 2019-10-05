@@ -1,8 +1,12 @@
 use flate2::write::GzEncoder;
+use flate2::read::GzDecoder;
 use flate2::Compression;
 use std::fs::File;
 use std::io;
 use std::io::Write;
+use std::collections::HashMap;
+use other_csv;
+use crate::utils;
 
 fn read_flag(flag: u8) -> Vec<bool> {
     let mut markers: Vec<bool> = Vec::new();
@@ -70,6 +74,42 @@ pub fn dense_to_eds_sparse(
     }
 
     Ok((bvecs, alphas))
+}
+
+pub fn reader(
+    input: &str,
+    num_cells: usize,
+    num_genes: usize,
+    expr: &mut Vec<Vec<f32>>,
+    bit_vecs: &mut Vec<Vec<u8>>,
+) -> Result<bool, io::Error> {
+    info!("Using {} as input CSV file\n", input);
+    info!(
+        "Using {} Rows (cells) and {} Columns (features)",
+        num_cells, num_genes
+    );
+
+    let file_handle = File::open(input)?;
+    let file = other_csv::ReaderBuilder::new()
+        .has_headers(false)
+        .from_reader(GzDecoder::new(file_handle));
+
+    let mut cid = 0;
+    let mut triplets: Vec<HashMap<u32, f32>> = vec![HashMap::new(); num_cells];
+    for line in file.into_records() {
+        let vals: Vec<f32> = line.unwrap()
+            .deserialize(None)
+            .unwrap();
+
+        for (gid, val) in vals.into_iter().enumerate() {
+            triplets[cid].insert(gid as u32, val);
+        }
+        cid += 1;
+    }
+    assert!(num_cells == cid, format!("{}/{}", num_cells, cid));
+
+    utils::triplets_to_eds(&triplets, expr, bit_vecs, num_genes);
+    Ok(true)
 }
 
 pub fn writer(

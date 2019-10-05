@@ -14,6 +14,7 @@ libmath = "0.2.1"
 hdf5 = "0.5.2"
 rand = "0.7.0"
 rayon = "1.2.0"
+csv = "1.1.1"
 
 [lib]
 name = "eds"

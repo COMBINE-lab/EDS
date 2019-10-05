@@ -38,7 +38,7 @@ pub fn reader(
             continue;
         }
 
-        let vals: Vec<&str> = record.split("\t").collect();
+        let vals: Vec<&str> = record.split_whitespace().collect();
 
         let gid = vals[gene_index].parse::<u32>().expect("can't convert gid");
         let cid = vals[cell_index]
