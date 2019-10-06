@@ -4,7 +4,6 @@ extern crate hdf5;
 extern crate math;
 extern crate pretty_env_logger;
 extern crate rayon;
-extern crate csv as other_csv;
 
 #[macro_use]
 extern crate log;

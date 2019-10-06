@@ -5,7 +5,8 @@ use std::fs::File;
 use std::io;
 use std::io::Write;
 use std::collections::HashMap;
-use other_csv;
+use std::io::{BufRead, BufReader};
+
 use crate::utils;
 
 fn read_flag(flag: u8) -> Vec<bool> {
@@ -89,25 +90,25 @@ pub fn reader(
         num_cells, num_genes
     );
 
+    let mut mol_count = 0;
     let file_handle = File::open(input)?;
-    let file = other_csv::ReaderBuilder::new()
-        .has_headers(false)
-        .from_reader(GzDecoder::new(file_handle));
-
-    let mut cid = 0;
+    let file = BufReader::new(GzDecoder::new(file_handle));
     let mut triplets: Vec<HashMap<u32, f32>> = vec![HashMap::new(); num_cells];
-    for line in file.into_records() {
-        let vals: Vec<f32> = line.unwrap()
-            .deserialize(None)
-            .unwrap();
 
-        for (gid, val) in vals.into_iter().enumerate() {
+    for (cid, line) in file.lines().enumerate() {
+        let record = line?;
+        let values: Vec<f32> = record.split(",")
+            .flat_map(str::parse::<f32>)
+            .collect();
+
+        assert_eq!(values.len(), num_genes);
+        for (gid, val) in values.into_iter().enumerate() {
             triplets[cid].insert(gid as u32, val);
+            mol_count += val as u32;
         }
-        cid += 1;
     }
-    assert!(num_cells == cid, format!("{}/{}", num_cells, cid));
 
+    info!("Done reading CSV; Found: {} molecules", mol_count);
     utils::triplets_to_eds(&triplets, expr, bit_vecs, num_genes);
     Ok(true)
 }
