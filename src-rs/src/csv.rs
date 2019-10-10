@@ -90,7 +90,7 @@ pub fn reader(
         num_cells, num_genes
     );
 
-    let mut mol_count = 0;
+    let mut mol_count = 0.0;
     let file_handle = File::open(input)?;
     let file = BufReader::new(GzDecoder::new(file_handle));
     let mut triplets: Vec<HashMap<u32, f32>> = vec![HashMap::new(); num_cells];
@@ -104,7 +104,7 @@ pub fn reader(
         assert_eq!(values.len(), num_genes);
         for (gid, val) in values.into_iter().enumerate() {
             triplets[cid].insert(gid as u32, val);
-            mol_count += val as u32;
+            mol_count += val as f64;
         }
     }
 
